@@ -1,0 +1,7 @@
+version: "3.9"
+
+services:
+  # TODO: define services (api, web, worker, db, queue)
+  placeholder:
+    image: alpine:3.19
+    command: ["sh", "-c", "echo 'Replace with real services'"]
