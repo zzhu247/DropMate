@@ -4,6 +4,7 @@
 ## 🧩 Overview
 
 **DropMate** is a **cloud-native delivery management platform** that enables customers to view ads, place and confirm orders, track deliveries with ETA updates, and communicate via message boards.  
+It now includes companion **driver and customer mobile experiences** so that drivers can accept stops, update statuses, and continuously share live locations while customers watch their driver progress in real time.
 The system also automates **daily dispatch report generation** and supports **WeChat-based ordering**.
 
 The platform demonstrates **modern cloud computing practices**:
@@ -19,8 +20,11 @@ The platform demonstrates **modern cloud computing practices**:
 
 ### Components
 - **Frontend (Next.js)** — ad display, order pages, chat, confirmation links  
+- **Customer Mobile App (React Native/Expo)** — mobile-first ordering, push notifications, live driver tracking  
 - **Backend API (Node.js/NestJS)** — handles business logic, REST/GraphQL endpoints  
 - **Worker Service** — consumes async jobs from a queue (ETA refreshes, report generation triggers)  
+- **Realtime Gateway (NestJS WebSockets/GraphQL Subscriptions)** — publishes driver location updates and delivery status changes to customers  
+- **Driver Mobile App (React Native/Expo)** — route assignments, status updates, background location streaming  
 - **Database (Managed PostgreSQL)** — regional HA relational data store  
 - **Object Storage** — stores images and generated PDF/Excel reports  
 - **External Services** — WeChat, SMS, Map APIs for ETA
@@ -43,9 +47,15 @@ Client (Web / WeChat)
              |
            Object Storage (DO Spaces)
      |
+     +-> Realtime Gateway (WS/Subs) <---- Driver Mobile App (React Native)
+     |                                   ^
+     |                                   |
      +-> External Services (WeChat, Maps, SMS)
      |
    Scheduler (K8s CronJob -> Queue)
+     |
+     v
+Customer Mobile App (React Native)
 ```
 
 ---
@@ -125,6 +135,7 @@ Includes:
 ## 💾 State & Persistence
 
 - PostgreSQL runs on DigitalOcean's managed cluster (primary + hot standby) with automatic failover.
+- Live-tracking data stored in append-only `driver_location_events` partitions (per driver, per day) with the realtime gateway caching the latest coordinate in Redis for low-latency fan-out to customers.
 - Hourly WAL archiving enables point-in-time recovery; nightly logical dumps copied to DO Spaces for air-gapped backups.
 - Quarterly restore drills validate the runbooks and ensure RTO/RPO targets are realistic.
 - Order and payment operations use idempotency tokens to avoid duplication during retries.
@@ -134,6 +145,7 @@ Includes:
 ## 🔍 Monitoring & Observability
 
 - Workloads emit OpenTelemetry traces + metrics scraped by Prometheus and visualized in Grafana (DO managed stack).
+- Driver live-tracking includes heartbeat metrics (per driver last location timestamp, GPS accuracy) and queue latency alarms for websocket broadcasts.
 - Alerting rules cover CPU saturation, queue latency, HTTP error rate, and failed jobs; paging routed through PagerDuty.
 - Structured JSON logs ship to Loki; 30-day retention with sampling for verbose debug events.
 - App endpoints `/healthz` and `/readyz` drive readiness probes; `/metrics` exposes service-level indicators.
