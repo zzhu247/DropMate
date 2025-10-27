@@ -1,0 +1,22 @@
+# Node.js build artifacts
+node_modules/
+dist/
+npm-debug.log*
+
+# Environment & editor files
+.env
+.env.*
+.DS_Store
+*.log
+
+# TypeScript
+*.tsbuildinfo
+
+# Docker artifacts
+*.pid
+*.seed
+postgres-data/
+
+# VSCode / IDE
+.idea/
+.vscode/
