@@ -8,6 +8,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useForm, Controller } from 'react-hook-form';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { z } from 'zod';
@@ -73,10 +74,14 @@ export const LoginScreen: React.FC<LoginProps> = ({ navigation }) => {
   });
 
   return (
-    <KeyboardAvoidingView
+    <SafeAreaView
       style={[styles.safeArea, { backgroundColor: theme.semantic.background }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      edges={['top', 'left', 'right']}
     >
+      <KeyboardAvoidingView
+        style={styles.keyboardView}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
           <Text style={[styles.title, { color: theme.semantic.text }]}>{t('login.title')}</Text>
@@ -169,12 +174,16 @@ export const LoginScreen: React.FC<LoginProps> = ({ navigation }) => {
           <Text style={[styles.linkText, { color: theme.colors.accent }]}>{t('login.signUp')}</Text>
         </Pressable>
       </ScrollView>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   safeArea: {
+    flex: 1,
+  },
+  keyboardView: {
     flex: 1,
   },
   content: {

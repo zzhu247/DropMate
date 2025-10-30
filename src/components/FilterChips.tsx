@@ -41,12 +41,12 @@ export const FilterChips = <Value extends string = string>({
             onPress={() => onChange(option.value)}
             style={({ pressed }) => [
               styles.chip,
+              chipStyle,
               {
                 backgroundColor: selected ? theme.colors.primaryTeal : theme.semantic.surface,
                 borderColor: selected ? theme.colors.primaryTeal : theme.semantic.border,
                 opacity: pressed ? 0.92 : 1,
               },
-              chipStyle,
             ]}
           >
             <Text style={[styles.label, { color: selected ? '#FFFFFF' : theme.semantic.text }]} numberOfLines={1}>
@@ -61,14 +61,16 @@ export const FilterChips = <Value extends string = string>({
 
 const styles = StyleSheet.create({
   scroll: {
-    flexGrow: 0,
-    height: 48,
+    flexShrink: 1,
+    minHeight: 48,
+    maxHeight: 56,
     paddingHorizontal: 4,
   },
   container: {
     flexDirection: 'row',
     gap: 12,
     alignItems: 'center',
+    minHeight: 48,
   },
   chip: {
     borderWidth: 1,

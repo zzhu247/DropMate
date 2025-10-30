@@ -1,9 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { FlatList, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { MapPin } from 'lucide-react-native';
+import { MapPin, Package } from 'lucide-react-native';
 
 import { MapViewWrapper } from '@/components/MapViewWrapper';
 import { CourierCard } from '@/components/CourierCard';
@@ -17,25 +17,29 @@ import { ROUTES } from '@/constants/routes';
 import { RootStackParamList } from '@/navigation/types';
 import { formatShipmentTitle } from '@/utils/format';
 import { FEATURE_FLAGS } from '@/constants/featureFlags';
+import { useDriver } from '@/stores/useDriver';
 
 export const MapScreen: React.FC = () => {
   const theme = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [search, setSearch] = useState('');
+  const isDriverMode = useDriver((state) => state.isDriverMode);
+  const setDriverMode = useDriver((state) => state.setDriverMode);
 
   const { data: shipments } = useShipmentsListQuery({ query: search });
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
 
+  // Auto-select first shipment
   useEffect(() => {
     if (!shipments || shipments.length === 0) {
       return;
     }
-    const preferred = shipments.find((shipment) => shipment.status === 'OUT_FOR_DELIVERY');
+    const preferred = shipments.find((s) => s.status === 'OUT_FOR_DELIVERY');
     setSelectedId((current) => current ?? preferred?.id ?? shipments[0]?.id);
   }, [shipments]);
 
   const selectedShipment = useMemo(
-    () => shipments?.find((shipment) => shipment.id === selectedId),
+    () => shipments?.find((s) => s.id === selectedId),
     [selectedId, shipments],
   );
 
@@ -43,12 +47,14 @@ export const MapScreen: React.FC = () => {
     FEATURE_FLAGS.mapsEnabled ? selectedId : undefined,
   );
 
-  const latestCheckpoint = selectedShipment
-    ? selectedShipment.checkpoints[selectedShipment.checkpoints.length - 1]
-    : undefined;
+  const latestCheckpoint = useMemo(() => {
+    if (!selectedShipment || !selectedShipment.checkpoints.length) return undefined;
+    return selectedShipment.checkpoints[selectedShipment.checkpoints.length - 1];
+  }, [selectedShipment]);
 
+  // User mode markers (courier + destination)
   const markers = useMemo(() => {
-    if (!routeData || routeData.coordinates.length === 0) {
+    if (!routeData?.coordinates || routeData.coordinates.length === 0) {
       return [];
     }
 
@@ -71,13 +77,13 @@ export const MapScreen: React.FC = () => {
         pinColor: theme.colors.accent,
       },
     ];
-  }, [routeData, theme.colors.accent, theme.colors.primaryTeal]);
+  }, [routeData, theme.colors]);
 
-  const handleOpenDetails = (shipmentId: string) => {
+  const handleOpenDetails = useCallback((shipmentId: string) => {
     navigation.navigate(ROUTES.ShipmentDetails, { shipmentId });
-  };
+  }, [navigation]);
 
-  const renderShipment = ({ item }: { item: Shipment }) => (
+  const renderShipment = useCallback(({ item }: { item: Shipment }) => (
     <Pressable
       onPress={() => setSelectedId(item.id)}
       style={({ pressed }) => [
@@ -93,10 +99,13 @@ export const MapScreen: React.FC = () => {
       <Text style={{ color: theme.semantic.text, fontWeight: '500' }}>{formatShipmentTitle(item)}</Text>
       <Text style={{ color: theme.semantic.textMuted, fontSize: 12 }}>{item.status}</Text>
     </Pressable>
-  );
+  ), [selectedId, theme.colors, theme.semantic]);
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.semantic.background }]}>
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: theme.semantic.background }]}
+      edges={['top', 'left', 'right']}
+    >
       <View style={styles.mapContainer}>
         {FEATURE_FLAGS.mapsEnabled ? (
           <MapViewWrapper routeCoordinates={routeData?.coordinates} markers={markers} />
@@ -104,41 +113,115 @@ export const MapScreen: React.FC = () => {
           <View style={styles.placeholderWrapper}>
             <PlaceholderCard
               title="Live map coming soon"
-              description="We’re finishing the integration. You’ll see courier locations and ETAs here once it’s ready."
+              description="We're finishing the integration. You'll see courier locations and ETAs here once it's ready."
               Icon={MapPin}
             />
           </View>
         )}
       </View>
+
+      {/* User Mode View */}
       <View style={[styles.bottomSheet, { backgroundColor: theme.semantic.surface }]}>
-        <CourierCard
-          status={selectedShipment?.status ?? 'IN_TRANSIT'}
-          etaIso={selectedShipment?.etaIso}
-          location={latestCheckpoint?.location}
-          updatedIso={selectedShipment?.lastUpdatedIso}
-          onPress={() => selectedShipment && handleOpenDetails(selectedShipment.id)}
-        />
-        <SearchBar
-          value={search}
-          onChangeText={setSearch}
-          placeholder="Search deliveries"
-          style={styles.searchBar}
-        />
-        <FlatList
-          horizontal
-          data={shipments}
-          contentContainerStyle={styles.shipmentList}
-          keyExtractor={(item) => item.id}
-          renderItem={renderShipment}
-          showsHorizontalScrollIndicator={false}
-        />
-        {selectedShipment ? (
-          <ShipmentCard
-            shipment={selectedShipment}
-            compactTimeline
-            onPress={() => handleOpenDetails(selectedShipment.id)}
-          />
-        ) : null}
+        <View style={styles.userModeToggle}>
+          <View style={styles.headerLeft}>
+            <Package color={theme.colors.primaryTeal} size={20} />
+            <Text style={[styles.headerTitle, { color: theme.semantic.text }]}>
+              Track Package
+            </Text>
+          </View>
+          <View style={styles.toggleContainer}>
+            <Text style={[styles.modeLabel, { color: theme.semantic.textMuted }]}>Driver Mode</Text>
+            <Switch
+              value={isDriverMode}
+              onValueChange={setDriverMode}
+              trackColor={{ false: theme.semantic.border, true: theme.colors.primaryTeal }}
+            />
+          </View>
+        </View>
+
+        {isDriverMode ? (
+          /* Driver Mode Content */
+          <View style={styles.driverContent}>
+            <Text style={[styles.driverMessage, { color: theme.semantic.text }]}>
+              Driver mode: View all deliveries
+            </Text>
+            <ScrollView style={styles.driverList} showsVerticalScrollIndicator={false}>
+              {shipments && shipments.length > 0 ? (
+                shipments
+                  .filter((s) => s.status === 'OUT_FOR_DELIVERY' || s.status === 'IN_TRANSIT')
+                  .map((shipment) => (
+                    <Pressable
+                      key={shipment.id}
+                      style={[styles.deliveryCard, {
+                        backgroundColor: theme.semantic.surface,
+                        borderColor: theme.semantic.border,
+                      }]}
+                      onPress={() => handleOpenDetails(shipment.id)}
+                    >
+                      <View style={styles.deliveryCardHeader}>
+                        <Text style={[styles.deliveryTitle, { color: theme.semantic.text }]}>
+                          {formatShipmentTitle(shipment)}
+                        </Text>
+                        <View style={[
+                          styles.statusBadge,
+                          { backgroundColor: shipment.status === 'OUT_FOR_DELIVERY' ? `${theme.colors.error}20` : `${theme.colors.accent}20` }
+                        ]}>
+                          <Text style={[
+                            styles.statusText,
+                            { color: shipment.status === 'OUT_FOR_DELIVERY' ? theme.colors.error : theme.colors.accent }
+                          ]}>
+                            {shipment.status === 'OUT_FOR_DELIVERY' ? 'URGENT' : 'ACTIVE'}
+                          </Text>
+                        </View>
+                      </View>
+                      <Text style={[styles.deliveryLocation, { color: theme.semantic.textMuted }]}>
+                        {shipment.checkpoints[shipment.checkpoints.length - 1]?.location || 'Unknown location'}
+                      </Text>
+                    </Pressable>
+                  ))
+              ) : (
+                <View style={styles.emptyDriver}>
+                  <Package size={48} color={theme.semantic.textMuted} />
+                  <Text style={[styles.emptyText, { color: theme.semantic.textMuted }]}>
+                    No active deliveries
+                  </Text>
+                </View>
+              )}
+            </ScrollView>
+          </View>
+        ) : (
+          /* User Mode Content */
+          <>
+            <CourierCard
+              status={selectedShipment?.status ?? 'IN_TRANSIT'}
+              etaIso={selectedShipment?.etaIso}
+              location={latestCheckpoint?.location}
+              updatedIso={selectedShipment?.lastUpdatedIso}
+              onPress={() => selectedShipment && handleOpenDetails(selectedShipment.id)}
+            />
+            <SearchBar
+              value={search}
+              onChangeText={setSearch}
+              placeholder="Search deliveries"
+              style={styles.searchBar}
+            />
+            <FlatList
+              horizontal
+              data={shipments}
+              contentContainerStyle={styles.shipmentList}
+              keyExtractor={(item) => item.id}
+              renderItem={renderShipment}
+              showsHorizontalScrollIndicator={false}
+            />
+            {selectedShipment && (
+              <ShipmentCard
+                shipment={selectedShipment}
+                compactTimeline
+                onPress={() => handleOpenDetails(selectedShipment.id)}
+              />
+            )}
+          </>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -167,6 +250,33 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: -4 },
     elevation: 8,
   },
+  userModeToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: 12,
+    marginBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  toggleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  modeLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
   searchBar: {
     marginTop: 8,
   },
@@ -179,5 +289,58 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     minWidth: 160,
     gap: 4,
+  },
+  // Driver Mode Styles
+  driverContent: {
+    flex: 1,
+    gap: 12,
+  },
+  driverMessage: {
+    fontSize: 14,
+    fontWeight: '500',
+    paddingVertical: 8,
+  },
+  driverList: {
+    flex: 1,
+  },
+  deliveryCard: {
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 12,
+    gap: 8,
+  },
+  deliveryCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  deliveryTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    flex: 1,
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  statusText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  deliveryLocation: {
+    fontSize: 14,
+  },
+  emptyDriver: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+    gap: 12,
+  },
+  emptyText: {
+    fontSize: 16,
+    fontWeight: '500',
   },
 });

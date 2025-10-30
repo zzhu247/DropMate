@@ -1,10 +1,9 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Pressable, PressableProps, StyleSheet, Text, View } from 'react-native';
 
 import { Shipment } from '@/types';
-import { formatShipmentSubtitle, formatShipmentTitle } from '@/utils/format';
+import { formatShipmentSubtitle, formatShipmentTitle, formatAbsoluteTime } from '@/utils/format';
 import { StatusPill } from './StatusPill';
-import { Timeline } from './Timeline';
 import { useTheme } from '@/theme/ThemeProvider';
 
 export type ShipmentCardProps = PressableProps & {
@@ -21,6 +20,13 @@ const ShipmentCardComponent: React.FC<ShipmentCardProps> = ({
   ...pressableProps
 }) => {
   const theme = useTheme();
+
+  const latestUpdate = useMemo(() => {
+    if (shipment.checkpoints.length === 0) {
+      return null;
+    }
+    return shipment.checkpoints[shipment.checkpoints.length - 1];
+  }, [shipment.checkpoints]);
 
   return (
     <Pressable
@@ -50,13 +56,16 @@ const ShipmentCardComponent: React.FC<ShipmentCardProps> = ({
         </View>
         <StatusPill status={shipment.status} />
       </View>
-      <View style={styles.timelineWrapper}>
-        <Timeline
-          checkpoints={shipment.checkpoints}
-          activeStatus={shipment.status}
-          compact={compactTimeline}
-        />
-      </View>
+      {latestUpdate ? (
+        <View style={styles.updateWrapper}>
+          <Text style={[styles.updateLabel, { color: theme.semantic.text }]}>
+            {latestUpdate.label}
+          </Text>
+          <Text style={[styles.updateMeta, { color: theme.semantic.textMuted }]}>
+            {latestUpdate.location ? `${latestUpdate.location} · ` : ''}{formatAbsoluteTime(latestUpdate.timeIso)}
+          </Text>
+        </View>
+      ) : null}
       {footer ? <View style={styles.footer}>{footer}</View> : null}
     </Pressable>
   );
@@ -87,8 +96,16 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 14,
   },
-  timelineWrapper: {
-    flex: 1,
+  updateWrapper: {
+    gap: 4,
+    paddingVertical: 4,
+  },
+  updateLabel: {
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  updateMeta: {
+    fontSize: 13,
   },
   footer: {
     marginTop: 4,

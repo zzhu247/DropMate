@@ -49,7 +49,10 @@ export const TrackScreen: React.FC = () => {
   );
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.semantic.background }]}>
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: theme.semantic.background }]}
+      edges={['top', 'left', 'right']}
+    >
       <View style={styles.container}>
         <Text style={[styles.heading, { color: theme.semantic.text }]}>{t('track.title')}</Text>
         <SearchBar

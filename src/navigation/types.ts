@@ -4,7 +4,7 @@ export type BottomTabParamList = {
   HomeTab: undefined;
   TrackTab: undefined;
   MapTab: undefined;
-  ProfileTab: undefined;
+  SettingsTab: undefined;
 };
 
 export type RootStackParamList = {
@@ -12,6 +12,7 @@ export type RootStackParamList = {
   Tutorial: undefined;
   Login: undefined;
   Main: NavigatorScreenParams<BottomTabParamList> | undefined;
+  Profile: undefined;
   ShipmentDetails: { shipmentId: string };
   AddTracking: undefined;
 };

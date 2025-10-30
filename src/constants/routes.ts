@@ -3,6 +3,7 @@ export const ROUTES = {
   Tutorial: 'Tutorial',
   Login: 'Login',
   Main: 'Main',
+  Profile: 'Profile',
   ShipmentDetails: 'ShipmentDetails',
   AddTracking: 'AddTracking',
 } as const;
@@ -11,7 +12,7 @@ export const TABS = {
   Home: 'HomeTab',
   Track: 'TrackTab',
   Map: 'MapTab',
-  Profile: 'ProfileTab',
+  Settings: 'SettingsTab',
 } as const;
 
 export const DEEP_LINK_PATTERN = 'dropmate://track/:id';

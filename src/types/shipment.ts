@@ -16,3 +16,15 @@ export type Shipment = {
   checkpoints: Checkpoint[];
   lastUpdatedIso: string;
 };
+
+export type DeliveryItem = {
+  id: string;
+  shipment: Shipment;
+  deliveryAddress: string;
+  recipientName?: string;
+  priority: 'high' | 'medium' | 'low';
+  orderIndex: number;
+  estimatedDeliveryTime?: string;
+  distance?: number; // in km
+  notes?: string;
+};

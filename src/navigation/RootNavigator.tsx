@@ -3,7 +3,7 @@ import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Platform } from 'react-native';
-import { Home, Search, Map as MapIcon, User } from 'lucide-react-native';
+import { Home, Search, Map as MapIcon, Settings as SettingsIcon } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { ROUTES, TABS } from '@/constants/routes';
@@ -15,6 +15,7 @@ import { HomeScreen } from '@/screens/Home';
 import { TrackScreen } from '@/screens/Track';
 import { MapScreen } from '@/screens/Map';
 import { ProfileScreen } from '@/screens/Profile';
+import { SettingsScreen } from '@/screens/Settings';
 import { ShipmentDetailsScreen } from '@/screens/ShipmentDetails';
 import { AddTrackingSheetScreen } from '@/screens/AddTrackingSheet';
 
@@ -45,9 +46,9 @@ const TabNavigator: React.FC = () => {
               return <Search color={color} size={size} />;
             case TABS.Map:
               return <MapIcon color={color} size={size} />;
-            case TABS.Profile:
+            case TABS.Settings:
             default:
-              return <User color={color} size={size} />;
+              return <SettingsIcon color={color} size={size} />;
           }
         },
       })}
@@ -55,7 +56,7 @@ const TabNavigator: React.FC = () => {
       <Tab.Screen name={TABS.Home} component={HomeScreen} options={{ title: 'Home' }} />
       <Tab.Screen name={TABS.Track} component={TrackScreen} options={{ title: 'Track' }} />
       <Tab.Screen name={TABS.Map} component={MapScreen} options={{ title: 'Map' }} />
-      <Tab.Screen name={TABS.Profile} component={ProfileScreen} options={{ title: 'Profile' }} />
+      <Tab.Screen name={TABS.Settings} component={SettingsScreen} options={{ title: 'Settings' }} />
     </Tab.Navigator>
   );
 };
@@ -86,6 +87,11 @@ export const RootNavigator: React.FC = () => {
         <Stack.Screen name={ROUTES.Tutorial} component={TutorialScreen} />
         <Stack.Screen name={ROUTES.Login} component={LoginScreen} />
         <Stack.Screen name={ROUTES.Main} component={TabNavigator} />
+        <Stack.Screen
+          name={ROUTES.Profile}
+          component={ProfileScreen}
+          options={{ headerShown: false }}
+        />
         <Stack.Screen
           name={ROUTES.ShipmentDetails}
           component={ShipmentDetailsScreen}

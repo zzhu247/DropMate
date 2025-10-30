@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MapPin } from 'lucide-react-native';
@@ -35,17 +36,24 @@ export const ShipmentDetailsScreen: React.FC = () => {
 
   if (!shipment) {
     return (
-      <View style={[styles.loading, { backgroundColor: theme.semantic.background }]}>
+      <SafeAreaView
+        style={[styles.loading, { backgroundColor: theme.semantic.background }]}
+        edges={['top', 'left', 'right']}
+      >
         <Text style={{ color: theme.semantic.text }}>Loading shipment…</Text>
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <ScrollView
-      style={[styles.container, { backgroundColor: theme.semantic.background }]}
-      contentContainerStyle={styles.content}
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: theme.semantic.background }]}
+      edges={['top', 'left', 'right']}
     >
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+      >
       <Pressable onPress={() => navigation.goBack()} style={styles.backButton} accessibilityRole="button">
         <Text style={[styles.backLabel, { color: theme.colors.accent }]}>Back</Text>
       </Pressable>
@@ -83,11 +91,15 @@ export const ShipmentDetailsScreen: React.FC = () => {
           </View>
         ) : null}
       </View>
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+  },
   container: {
     flex: 1,
   },
