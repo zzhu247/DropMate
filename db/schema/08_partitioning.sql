@@ -12,6 +12,9 @@ CREATE TABLE IF NOT EXISTS shipment_events_default
 CREATE TABLE IF NOT EXISTS webhook_events_default
     PARTITION OF webhook_events DEFAULT;
 
+
+
+
 -- Suggested helper: create_monthly_partitions('ad_impressions', 'occurred_at', '2024-01-01');
 -- Implement partition management logic in background jobs or external automation.
 
