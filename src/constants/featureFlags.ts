@@ -1,3 +1,3 @@
 export const FEATURE_FLAGS = {
-  mapsEnabled: false, // Disabled until react-native-maps is properly configured
+  mapsEnabled: true, // Using Apple Maps on iOS with proper initialization
 };

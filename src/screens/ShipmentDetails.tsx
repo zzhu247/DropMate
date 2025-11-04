@@ -10,7 +10,7 @@ import { useTheme } from '@/theme/ThemeProvider';
 import { Timeline } from '@/components/Timeline';
 import { StatusPill } from '@/components/StatusPill';
 import { CourierCard } from '@/components/CourierCard';
-import { MapViewWrapper } from '@/components/MapViewWrapper';
+import { MapViewSafe } from '@/components/MapViewSafe';
 import { PlaceholderCard } from '@/components/PlaceholderCard';
 import { formatAbsoluteTime, formatShipmentTitle } from '@/utils/format';
 import { RootStackParamList } from '@/navigation/types';
@@ -73,11 +73,11 @@ export const ShipmentDetailsScreen: React.FC = () => {
         <Text style={[styles.sectionTitle, { color: theme.semantic.text }]}>Map</Text>
         <View style={styles.mapWrapper}>
           {FEATURE_FLAGS.mapsEnabled ? (
-            <MapViewWrapper routeCoordinates={routeData?.coordinates} />
+            <MapViewSafe routeCoordinates={routeData?.coordinates} />
           ) : (
             <PlaceholderCard
               title="Map preview coming soon"
-              description="We’ll surface the courier route here once live tracking is enabled."
+              description="We'll surface the courier route here once live tracking is enabled."
               Icon={MapPin}
             />
           )}

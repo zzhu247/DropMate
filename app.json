@@ -19,13 +19,28 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "This app needs access to your location to show delivery routes",
+        "NSLocationAlwaysUsageDescription": "This app needs access to your location to track deliveries"
+      },
+      "bundleIdentifier": "com.kevinlin29.dropmate"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/logo.png",
         "backgroundColor": "#F6F7F9"
-      }
+      },
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ],
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyC1c7iaO0OOUOym-xQcF_miAxlZE54SYJI"
+        }
+      },
+      "package": "com.kevinlin29.dropmate"
     },
     "extra": {
       "eas": {
@@ -33,7 +48,13 @@
       }
     },
     "plugins": [
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow DropMate to use your location to track deliveries."
+        }
+      ]
     ]
   }
 }

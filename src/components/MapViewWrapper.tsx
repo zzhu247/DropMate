@@ -1,6 +1,6 @@
-import React, { useMemo } from 'react';
-import MapView, { Marker, Polyline, Region as MapRegion } from 'react-native-maps';
-import { StyleProp, StyleSheet, ViewStyle } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import MapView, { Marker, Polyline, Region, PROVIDER_GOOGLE } from 'react-native-maps';
+import { ActivityIndicator, StyleProp, StyleSheet, View, ViewStyle, Platform } from 'react-native';
 
 import { LatLng, getRegionForCoordinates, toMapCoordinates } from '@/utils/map';
 
@@ -16,10 +16,15 @@ export type MapViewWrapperProps = {
   routeCoordinates?: LatLng[];
   markers?: MapMarker[];
   style?: StyleProp<ViewStyle>;
-  initialRegion?: MapRegion;
+  initialRegion?: Region;
   onMapReady?: () => void;
 };
 
+/**
+ * MapView wrapper component with proper initialization
+ * - iOS: Uses Apple Maps (default, no additional setup required)
+ * - Android: Uses Google Maps (requires API key in app.json, not configured yet)
+ */
 export const MapViewWrapper: React.FC<MapViewWrapperProps> = ({
   routeCoordinates,
   markers,
@@ -27,6 +32,27 @@ export const MapViewWrapper: React.FC<MapViewWrapperProps> = ({
   initialRegion,
   onMapReady,
 }) => {
+  const [isReady, setIsReady] = useState(false);
+  const [isMapReady, setIsMapReady] = useState(false);
+  const mountedRef = useRef(true);
+
+  // Wait for component to be fully mounted before rendering map
+  useEffect(() => {
+    mountedRef.current = true;
+
+    // Small delay to ensure native bridge is ready
+    const timer = setTimeout(() => {
+      if (mountedRef.current) {
+        setIsReady(true);
+      }
+    }, 100);
+
+    return () => {
+      mountedRef.current = false;
+      clearTimeout(timer);
+    };
+  }, []);
+
   const computedRegion = useMemo(() => {
     if (initialRegion) {
       return initialRegion;
@@ -41,23 +67,48 @@ export const MapViewWrapper: React.FC<MapViewWrapperProps> = ({
       return getRegionForCoordinates(coords);
     }
 
-    return undefined;
+    // Default region (centered on US, required to prevent crash)
+    return {
+      latitude: 37.78825,
+      longitude: -122.4324,
+      latitudeDelta: 50,
+      longitudeDelta: 50,
+    };
   }, [initialRegion, markers, routeCoordinates]);
+
+  const handleMapReady = useCallback(() => {
+    if (mountedRef.current) {
+      setIsMapReady(true);
+      onMapReady?.();
+    }
+  }, [onMapReady]);
+
+  // Show loading indicator while initializing
+  if (!isReady) {
+    return (
+      <View style={[styles.map, styles.loadingContainer, style]}>
+        <ActivityIndicator size="large" color="#1497A1" />
+      </View>
+    );
+  }
 
   return (
     <MapView
+      provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
       style={[styles.map, style]}
       initialRegion={computedRegion}
-      onMapReady={onMapReady}
-      accessibilityHint="Live courier map"
+      onMapReady={handleMapReady}
+      loadingEnabled={true}
+      loadingIndicatorColor="#1497A1"
+      loadingBackgroundColor="#F6F7F9"
     >
-      {routeCoordinates && routeCoordinates.length > 0 ? (
+      {routeCoordinates && routeCoordinates.length > 0 && (
         <Polyline
           coordinates={routeCoordinates.map(toMapCoordinates)}
           strokeColor="#1497A1"
           strokeWidth={4}
         />
-      ) : null}
+      )}
       {markers?.map((marker) => (
         <Marker
           key={marker.id}
@@ -74,5 +125,10 @@ export const MapViewWrapper: React.FC<MapViewWrapperProps> = ({
 const styles = StyleSheet.create({
   map: {
     flex: 1,
+  },
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F6F7F9',
   },
 });

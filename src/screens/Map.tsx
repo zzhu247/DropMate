@@ -5,7 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MapPin, Package } from 'lucide-react-native';
 
-import { MapViewWrapper } from '@/components/MapViewWrapper';
+import { MapViewSafe } from '@/components/MapViewSafe';
 import { CourierCard } from '@/components/CourierCard';
 import { SearchBar } from '@/components/SearchBar';
 import { ShipmentCard } from '@/components/ShipmentCard';
@@ -108,7 +108,7 @@ export const MapScreen: React.FC = () => {
     >
       <View style={styles.mapContainer}>
         {FEATURE_FLAGS.mapsEnabled ? (
-          <MapViewWrapper routeCoordinates={routeData?.coordinates} markers={markers} />
+          <MapViewSafe routeCoordinates={routeData?.coordinates} markers={markers} />
         ) : (
           <View style={styles.placeholderWrapper}>
             <PlaceholderCard
