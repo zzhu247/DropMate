@@ -1,33 +1,28 @@
 import React, { useMemo, useState } from 'react';
 import { Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Bell, ChevronDown, ChevronRight, Package, DollarSign, MapPin, Clock } from 'lucide-react-native';
+import { Bell, ChevronDown, Plus, Package, Eye, EyeOff } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { Shipment } from '@/types';
 import { useShipmentsListQuery } from '@/hooks/useShipmentsQuery';
-import { ShipmentCard } from '@/components/ShipmentCard';
+import { CourierCard } from '@/components/CourierCard';
 import { SearchBar } from '@/components/SearchBar';
 import { Skeleton } from '@/components/Skeleton';
 import { EmptyState } from '@/components/EmptyState';
 import { useTheme } from '@/theme/ThemeProvider';
+import { tokens } from '@/theme/tokens';
 import { ROUTES, TABS } from '@/constants/routes';
 import { RootStackParamList } from '@/navigation/types';
 import { t } from '@/i18n/i18n';
-
-type QuickAction = {
-  id: string;
-  label: string;
-  icon: React.ReactNode;
-  onPress: () => void;
-};
 
 export const HomeScreen: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const theme = useTheme();
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [balanceVisible, setBalanceVisible] = useState(true);
 
   const { data, isLoading, refetch, isRefetching } = useShipmentsListQuery({
     query: searchQuery,
@@ -35,200 +30,202 @@ export const HomeScreen: React.FC = () => {
 
   const currentShipments = useMemo(() => {
     if (!data) return [];
-    return data.slice(0, 3); // Max 3 current shipments
-  }, [data]);
-
-  const recentShipments = useMemo(() => {
-    if (!data) return [];
-    return data.slice(3, 8); // Max 5 recent shipments (items 4-8)
+    return data.filter(s => s.status === 'IN_TRANSIT' || s.status === 'OUT_FOR_DELIVERY');
   }, [data]);
 
   const handleAddTracking = () => {
     navigation.navigate(ROUTES.AddTracking);
   };
 
-  const quickActions: QuickAction[] = [
-    {
-      id: 'check-rate',
-      label: 'Check Rate',
-      icon: <DollarSign color={theme.colors.primaryTeal} size={28} />,
-      onPress: () => {},
-    },
-    {
-      id: 'pick-up',
-      label: 'Pick Up',
-      icon: <Package color={theme.colors.primaryTeal} size={28} />,
-      onPress: () => {},
-    },
-    {
-      id: 'drop-off',
-      label: 'Drop Off',
-      icon: <MapPin color={theme.colors.primaryTeal} size={28} />,
-      onPress: () => {},
-    },
-    {
-      id: 'history',
-      label: 'History',
-      icon: <Clock color={theme.colors.primaryTeal} size={28} />,
-      onPress: () => navigation.navigate(ROUTES.Main, { screen: TABS.Track }),
-    },
-  ];
+  // Calculate mock progress for shipments
+  const getProgress = (shipment: Shipment) => {
+    const statusProgress = {
+      CREATED: 20,
+      IN_TRANSIT: 60,
+      OUT_FOR_DELIVERY: 80,
+      DELIVERED: 100,
+      EXCEPTION: 50,
+    };
+    return statusProgress[shipment.status] || 0;
+  };
+
+  // Get first and last checkpoint locations
+  const getShipmentLocations = (shipment: Shipment) => {
+    const checkpoints = shipment.checkpoints;
+    if (checkpoints.length === 0) return { origin: 'N/A', destination: 'N/A' };
+    
+    const first = checkpoints[0];
+    const last = checkpoints[checkpoints.length - 1];
+    
+    return {
+      origin: first.location || 'Origin',
+      destination: last.location || 'Destination',
+    };
+  };
+
+  const formatDate = (isoString: string) => {
+    const date = new Date(isoString);
+    return date.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+  };
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.colors.primaryTeal }]} edges={['top']}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.semantic.background || tokens.colors.background }]} edges={['top']}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={isRefetching} onRefresh={() => { void refetch(); }} tintColor="#FFFFFF" />
+          <RefreshControl 
+            refreshing={isRefetching} 
+            onRefresh={() => { void refetch(); }}
+            tintColor={theme.semantic.text || tokens.colors.textPrimary}
+          />
         }
       >
-        {/* Header Section */}
-        <View style={[styles.header, { backgroundColor: theme.colors.primaryTeal }]}>
-          <View style={styles.topBar}>
+        {/* Profile Header */}
+        <View style={[styles.header, { backgroundColor: theme.semantic.surface || tokens.colors.surface }]}>
+          <View style={styles.profileSection}>
             <Pressable
-              style={styles.profileContainer}
               onPress={() => navigation.navigate(ROUTES.Profile)}
               accessibilityRole="button"
             >
-              <View style={styles.profilePicture}>
-                <Package color="#FFFFFF" size={24} />
+              <View style={styles.profileImage}>
+                <Package color={tokens.colors.surface} size={24} />
               </View>
             </Pressable>
-            <Pressable style={styles.locationContainer} accessibilityRole="button">
-              <View>
-                <Text style={styles.locationTitle}>Your Location</Text>
-                <View style={styles.locationRow}>
-                  <Text style={styles.locationText}>Select location</Text>
-                  <ChevronDown color="#FFFFFF" size={16} />
-                </View>
-              </View>
-            </Pressable>
-            <Pressable style={styles.notificationButton} accessibilityRole="button">
-              <Bell color="#FFFFFF" size={24} />
-            </Pressable>
+            <View style={styles.profileInfo}>
+              <Text style={[styles.userName, { color: theme.semantic.text || tokens.colors.textPrimary }]}>
+                User Name
+              </Text>
+              <Pressable style={styles.locationContainer} accessibilityRole="button">
+                <Text style={[styles.userLocation, { color: theme.semantic.textMuted || tokens.colors.textSecondary }]}>
+                  Select location
+                </Text>
+                <ChevronDown color={theme.semantic.textMuted || tokens.colors.textSecondary} size={14} />
+              </Pressable>
+            </View>
           </View>
-
-          <Text style={styles.mainHeading}>Let's Track Your Package</Text>
-
-          <SearchBar
-            placeholder="Enter your tracking number"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            style={styles.headerSearchBar}
-          />
+          <Pressable style={styles.notificationButton} accessibilityRole="button">
+            <Bell color={theme.semantic.text || tokens.colors.textPrimary} size={24} />
+            <View style={styles.notificationBadge} />
+          </Pressable>
         </View>
 
-        {/* Quick Actions Section */}
-        <View style={[styles.contentSection, { backgroundColor: theme.semantic.background }]}>
-          <View style={styles.quickActionsContainer}>
-            {quickActions.map((action) => (
-              <Pressable
-                key={action.id}
-                style={({ pressed }) => [
-                  styles.quickActionButton,
-                  { opacity: pressed ? 0.7 : 1 },
-                ]}
-                onPress={action.onPress}
-                accessibilityRole="button"
-              >
-                <View style={[styles.quickActionIcon, { backgroundColor: theme.semantic.surface }]}>
-                  {action.icon}
-                </View>
-                <Text style={[styles.quickActionLabel, { color: theme.semantic.text }]}>
-                  {action.label}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-
-          {/* Current Shipment Section */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: theme.semantic.text }]}>Current Shipment</Text>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => navigation.navigate(ROUTES.Main, { screen: TABS.Track })}
-                style={styles.viewAll}
-              >
-                <Text style={[styles.viewAllLabel, { color: theme.colors.primaryTeal }]}>View All</Text>
-              </Pressable>
-            </View>
-
-            {isLoading && !data ? (
-              <>
-                {[1, 2, 3].map((i) => (
-                  <View key={i} style={[styles.skeletonCard, { borderColor: theme.semantic.border }]}>
-                    <Skeleton height={20} width="60%" />
-                    <Skeleton height={14} width="40%" />
-                  </View>
-                ))}
-              </>
-            ) : currentShipments.length > 0 ? (
-              currentShipments.map((shipment) => (
-                <ShipmentCard
-                  key={shipment.id}
-                  shipment={shipment}
-                  onPress={() => navigation.navigate(ROUTES.ShipmentDetails, { shipmentId: shipment.id })}
-                  style={styles.shipmentCard}
-                />
-              ))
-            ) : (
-              <EmptyState
-                title={t('home.emptyTitle')}
-                description={t('home.emptyBody')}
-                actionLabel={t('home.emptyAction')}
-                onActionPress={handleAddTracking}
-              />
-            )}
-          </View>
-
-          {/* Recent Shipment Section */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: theme.semantic.text }]}>Recent Shipment</Text>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => navigation.navigate(ROUTES.Main, { screen: TABS.Track })}
-                style={styles.viewAll}
-              >
-                <Text style={[styles.viewAllLabel, { color: theme.colors.primaryTeal }]}>View All</Text>
-              </Pressable>
-            </View>
-
-            {recentShipments.length > 0 ? (
-              recentShipments.map((shipment) => (
-                <ShipmentCard
-                  key={shipment.id}
-                  shipment={shipment}
-                  onPress={() => navigation.navigate(ROUTES.ShipmentDetails, { shipmentId: shipment.id })}
-                  style={styles.shipmentCard}
-                />
-              ))
-            ) : !isLoading && currentShipments.length > 0 ? (
-              <Text style={[styles.emptyText, { color: theme.semantic.textMuted }]}>
-                No recent shipments
+        {/* Balance Card */}
+        <View style={[styles.balanceCard, { backgroundColor: theme.semantic.surface || tokens.colors.surface }]}>
+          <View style={styles.balanceInfo}>
+            <Text style={[styles.balanceLabel, { color: theme.semantic.textMuted || tokens.colors.textSecondary }]}>
+              Your balance
+            </Text>
+            <View style={styles.balanceRow}>
+              <Text style={[styles.balanceAmount, { color: theme.semantic.text || tokens.colors.textPrimary }]}>
+                {balanceVisible ? '$244.00' : '••••'}
               </Text>
-            ) : null}
+              <Pressable onPress={() => setBalanceVisible(!balanceVisible)}>
+                {balanceVisible ? (
+                  <Eye size={20} color={theme.semantic.textMuted || tokens.colors.textTertiary} />
+                ) : (
+                  <EyeOff size={20} color={theme.semantic.textMuted || tokens.colors.textTertiary} />
+                )}
+              </Pressable>
+            </View>
           </View>
+          <Pressable style={styles.topUpButton}>
+            <Text style={[styles.topUpText, { color: theme.semantic.text || tokens.colors.textPrimary }]}>
+              Top up
+            </Text>
+          </Pressable>
+        </View>
+
+        {/* Action Buttons */}
+        <View style={styles.actionButtons}>
+          <Pressable 
+            style={[styles.actionButton, { backgroundColor: theme.semantic.surface || tokens.colors.surface }]}
+            onPress={handleAddTracking}
+          >
+            <Plus size={20} color={theme.semantic.text || tokens.colors.textPrimary} strokeWidth={2.5} />
+            <Text style={[styles.actionButtonText, { color: theme.semantic.text || tokens.colors.textPrimary }]}>
+              New track
+            </Text>
+          </Pressable>
+          <Pressable style={[styles.actionButton, { backgroundColor: theme.semantic.surface || tokens.colors.surface }]}>
+            <Package size={20} color={theme.semantic.text || tokens.colors.textPrimary} strokeWidth={2.5} />
+            <Text style={[styles.actionButtonText, { color: theme.semantic.text || tokens.colors.textPrimary }]}>
+              Order us
+            </Text>
+          </Pressable>
+        </View>
+
+        {/* Search Bar */}
+        <SearchBar
+          placeholder="Search"
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          style={styles.searchBar}
+        />
+
+        {/* Current Tracking Section */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.semantic.text || tokens.colors.textPrimary }]}>
+            Current tracking
+          </Text>
+
+          {isLoading && !data ? (
+            <>
+              {[1, 2].map((i) => (
+                <View 
+                  key={i} 
+                  style={[
+                    styles.skeletonCard, 
+                    { backgroundColor: theme.semantic.surface || tokens.colors.surface }
+                  ]}
+                >
+                  <Skeleton height={24} width="40%" variant="rounded" />
+                  <Skeleton height={20} width="60%" style={{ marginTop: 12 }} />
+                  <Skeleton height={4} width="100%" style={{ marginTop: 20 }} />
+                  <View style={{ flexDirection: 'row', gap: 40, marginTop: 16 }}>
+                    <View style={{ flex: 1 }}>
+                      <Skeleton height={14} width="60%" />
+                      <Skeleton height={12} width="80%" style={{ marginTop: 4 }} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Skeleton height={14} width="60%" />
+                      <Skeleton height={12} width="80%" style={{ marginTop: 4 }} />
+                    </View>
+                  </View>
+                </View>
+              ))}
+            </>
+          ) : currentShipments.length > 0 ? (
+            currentShipments.map((shipment) => {
+              const locations = getShipmentLocations(shipment);
+              const firstCheckpoint = shipment.checkpoints[0];
+              const lastCheckpoint = shipment.checkpoints[shipment.checkpoints.length - 1];
+              
+              return (
+                <CourierCard
+                  key={shipment.id}
+                  trackingNumber={shipment.id}
+                  status={shipment.status}
+                  origin={locations.origin}
+                  destination={locations.destination}
+                  originDate={firstCheckpoint ? formatDate(firstCheckpoint.timeIso) : 'N/A'}
+                  destinationDate={lastCheckpoint ? formatDate(lastCheckpoint.timeIso) : 'N/A'}
+                  progress={getProgress(shipment)}
+                  onPress={() => navigation.navigate(ROUTES.ShipmentDetails, { shipmentId: shipment.id })}
+                />
+              );
+            })
+          ) : (
+            <EmptyState
+              title={t('home.emptyTitle')}
+              description={t('home.emptyBody')}
+              actionLabel={t('home.emptyAction')}
+              onActionPress={handleAddTracking}
+            />
+          )}
         </View>
       </ScrollView>
-
-      {/* Floating Action Button */}
-      <Pressable
-        accessibilityRole="button"
-        style={({ pressed }) => [
-          styles.fab,
-          {
-            backgroundColor: theme.colors.primaryTeal,
-            opacity: pressed ? 0.9 : 1,
-          },
-        ]}
-        onPress={handleAddTracking}
-      >
-        <Package color="#FFFFFF" size={28} />
-      </Pressable>
     </SafeAreaView>
   );
 };
@@ -242,156 +239,128 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    paddingBottom: 100,
+    paddingBottom: tokens.spacing.xxxl,
   },
   header: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 24,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: tokens.spacing.lg,
+    paddingTop: tokens.spacing.lg,
+    paddingBottom: tokens.spacing.lg,
   },
-  topBar: {
+  profileSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 24,
+    flex: 1,
   },
-  profileContainer: {
-    width: 48,
-  },
-  profilePicture: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  profileImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: tokens.colors.textPrimary,
     alignItems: 'center',
     justifyContent: 'center',
+    marginRight: tokens.spacing.sm,
+  },
+  profileInfo: {
+    justifyContent: 'center',
+    flex: 1,
+  },
+  userName: {
+    ...tokens.typography.h4,
+    marginBottom: tokens.spacing.xxs,
   },
   locationContainer: {
-    flex: 1,
-    alignItems: 'center',
-    paddingHorizontal: 12,
-  },
-  locationTitle: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    opacity: 0.8,
-    textAlign: 'center',
-  },
-  locationRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: tokens.spacing.xxs,
   },
-  locationText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '600',
+  userLocation: {
+    ...tokens.typography.small,
   },
   notificationButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    position: 'relative',
+    padding: tokens.spacing.xs,
   },
-  mainHeading: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginBottom: 20,
+  notificationBadge: {
+    position: 'absolute',
+    top: tokens.spacing.xs,
+    right: tokens.spacing.xs,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: tokens.colors.error,
   },
-  headerSearchBar: {
-    backgroundColor: '#FFFFFF',
-  },
-  contentSection: {
-    flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 24,
-    marginTop: -16,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-  },
-  quickActionsContainer: {
+  balanceCard: {
+    marginHorizontal: tokens.spacing.lg,
+    marginTop: tokens.spacing.lg,
+    padding: tokens.spacing.lg,
+    borderRadius: tokens.radii.card,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 32,
-    gap: 12,
-  },
-  quickActionButton: {
-    flex: 1,
     alignItems: 'center',
-    gap: 8,
+    ...tokens.shadows.md,
   },
-  quickActionIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 16,
+  balanceInfo: {
+    flex: 1,
+  },
+  balanceLabel: {
+    ...tokens.typography.small,
+    marginBottom: tokens.spacing.xs,
+  },
+  balanceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tokens.spacing.sm,
+  },
+  balanceAmount: {
+    ...tokens.typography.h1,
+  },
+  topUpButton: {
+    backgroundColor: tokens.colors.background,
+    paddingHorizontal: tokens.spacing.xl,
+    paddingVertical: tokens.spacing.sm,
+    borderRadius: tokens.radii.pill,
+  },
+  topUpText: {
+    ...tokens.typography.button,
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    marginHorizontal: tokens.spacing.lg,
+    marginTop: tokens.spacing.lg,
+    gap: tokens.spacing.sm,
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    paddingVertical: tokens.spacing.md,
+    borderRadius: tokens.radii.input,
+    gap: tokens.spacing.xs,
+    ...tokens.shadows.sm,
   },
-  quickActionLabel: {
-    fontSize: 13,
-    fontWeight: '500',
-    textAlign: 'center',
+  actionButtonText: {
+    ...tokens.typography.button,
+  },
+  searchBar: {
+    marginHorizontal: tokens.spacing.lg,
+    marginTop: tokens.spacing.lg,
   },
   section: {
-    marginBottom: 24,
-    gap: 12,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 4,
+    marginTop: tokens.spacing.xl,
+    marginHorizontal: tokens.spacing.lg,
+    gap: tokens.spacing.md,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  viewAll: {
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-  },
-  viewAllLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  shipmentCard: {
-    marginBottom: 12,
+    ...tokens.typography.h3,
+    marginBottom: tokens.spacing.xxs,
   },
   skeletonCard: {
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 16,
-    gap: 12,
-    marginBottom: 12,
-  },
-  emptyText: {
-    textAlign: 'center',
-    fontSize: 14,
-    paddingVertical: 20,
-  },
-  fab: {
-    position: 'absolute',
-    bottom: 80,
-    alignSelf: 'center',
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.2,
-    shadowRadius: 16,
-    elevation: 8,
+    padding: tokens.spacing.lg,
+    borderRadius: tokens.radii.card,
+    ...tokens.shadows.md,
   },
 });
