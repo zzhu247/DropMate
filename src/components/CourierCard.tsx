@@ -174,16 +174,17 @@ export const CourierCard: React.FC<CourierCardProps> = ({
 
 const styles = StyleSheet.create({
   card: {
-    marginHorizontal: tokens.spacing.lg,
+    marginHorizontal: 0, // Remove horizontal margin since it's inside a card now
     marginBottom: tokens.spacing.md,
     borderRadius: tokens.radii.card,
     overflow: 'visible',
     ...tokens.shadows.sm,
   },
   cardContent: {
-    padding: tokens.spacing.md,
-    paddingRight: 120, // Space for package
-    gap: tokens.spacing.sm,
+    padding: tokens.spacing.lg,
+    paddingRight: 140, // More space for larger package
+    gap: tokens.spacing.md,
+    minHeight: 140, // Make card taller
   },
   statusBadge: {
     alignSelf: 'flex-start',

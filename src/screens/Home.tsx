@@ -83,7 +83,7 @@ export const HomeScreen: React.FC = () => {
         }
       >
         {/* Profile Header */}
-        <View style={[styles.header, { backgroundColor: theme.semantic.surface || tokens.colors.surface }]}>
+        <View style={styles.header}>
           <View style={styles.profileSection}>
             <Pressable
               onPress={() => navigation.navigate(ROUTES.Profile)}
@@ -95,11 +95,11 @@ export const HomeScreen: React.FC = () => {
             </Pressable>
             <View style={styles.profileInfo}>
               <Text style={[styles.userName, { color: theme.semantic.text || tokens.colors.textPrimary }]}>
-                User Name
+                Sri Julaekha
               </Text>
               <Pressable style={styles.locationContainer} accessibilityRole="button">
                 <Text style={[styles.userLocation, { color: theme.semantic.textMuted || tokens.colors.textSecondary }]}>
-                  Select location
+                  Jakarta, ID
                 </Text>
                 <ChevronDown color={theme.semantic.textMuted || tokens.colors.textSecondary} size={14} />
               </Pressable>
@@ -112,7 +112,7 @@ export const HomeScreen: React.FC = () => {
         </View>
 
         {/* Balance Card */}
-        <View style={[styles.balanceCard, { backgroundColor: theme.semantic.surface || tokens.colors.surface }]}>
+        <View style={styles.balanceCard}>
           <View style={styles.balanceInfo}>
             <Text style={[styles.balanceLabel, { color: theme.semantic.textMuted || tokens.colors.textSecondary }]}>
               Your balance
@@ -130,7 +130,7 @@ export const HomeScreen: React.FC = () => {
               </Pressable>
             </View>
           </View>
-          <Pressable style={styles.topUpButton}>
+          <Pressable style={[styles.topUpButton, { backgroundColor: theme.semantic.surface || tokens.colors.surface }]}>
             <Text style={[styles.topUpText, { color: theme.semantic.text || tokens.colors.textPrimary }]}>
               Top up
             </Text>
@@ -160,16 +160,18 @@ export const HomeScreen: React.FC = () => {
           </Pressable>
         </View>
 
-        {/* Search Bar */}
-        <SearchBar
-          placeholder="Search"
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          style={styles.searchBar}
-        />
+        {/* Search Bar + Current Tracking Section - Combined Card */}
+        <View style={[styles.trackingSection, { backgroundColor: theme.semantic.surface || tokens.colors.surface }]}>
+          {/* Search Bar */}
+          <View style={styles.searchBarWrapper}>
+            <SearchBar
+              placeholder="Search"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              style={styles.searchBarInCard}
+            />
+          </View>
 
-        {/* Current Tracking Section */}
-        <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: theme.semantic.text || tokens.colors.textPrimary }]}>
             Current tracking
           </Text>
@@ -179,10 +181,7 @@ export const HomeScreen: React.FC = () => {
               {[1, 2].map((i) => (
                 <View 
                   key={i} 
-                  style={[
-                    styles.skeletonCard, 
-                    { backgroundColor: theme.semantic.surface || tokens.colors.surface }
-                  ]}
+                  style={styles.skeletonCard}
                 >
                   <Skeleton height={24} width="40%" variant="rounded" />
                   <Skeleton height={20} width="60%" style={{ marginTop: 12 }} />
@@ -206,9 +205,6 @@ export const HomeScreen: React.FC = () => {
               const firstCheckpoint = shipment.checkpoints[0];
               const lastCheckpoint = shipment.checkpoints[shipment.checkpoints.length - 1];
               
-              // Alternate between yellow and blue
-              const variant = index % 2 === 0 ? 'yellow' : 'blue';
-              
               return (
                 <CourierCard
                   key={shipment.id}
@@ -219,7 +215,7 @@ export const HomeScreen: React.FC = () => {
                   originDate={firstCheckpoint ? formatDate(firstCheckpoint.timeIso) : 'N/A'}
                   destinationDate={lastCheckpoint ? formatDate(lastCheckpoint.timeIso) : 'N/A'}
                   progress={getProgress(shipment)}
-                  variant={variant}
+                  variant="yellow"
                   onPress={() => navigation.navigate(ROUTES.ShipmentDetails, { shipmentId: shipment.id })}
                 />
               );
@@ -255,7 +251,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: tokens.spacing.lg,
     paddingTop: tokens.spacing.lg,
-    paddingBottom: tokens.spacing.lg,
+    paddingBottom: tokens.spacing.md,
   },
   profileSection: {
     flexDirection: 'row',
@@ -302,13 +298,12 @@ const styles = StyleSheet.create({
   },
   balanceCard: {
     marginHorizontal: tokens.spacing.lg,
-    marginTop: tokens.spacing.lg,
-    padding: tokens.spacing.lg,
-    borderRadius: tokens.radii.card,
+    marginTop: tokens.spacing.sm,
+    marginBottom: tokens.spacing.md,
+    padding: tokens.spacing.md,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    ...tokens.shadows.md,
   },
   balanceInfo: {
     flex: 1,
@@ -326,10 +321,10 @@ const styles = StyleSheet.create({
     ...tokens.typography.h1,
   },
   topUpButton: {
-    backgroundColor: tokens.colors.background,
     paddingHorizontal: tokens.spacing.xl,
     paddingVertical: tokens.spacing.sm,
     borderRadius: tokens.radii.pill,
+    ...tokens.shadows.sm,
   },
   topUpText: {
     ...tokens.typography.button,
@@ -353,22 +348,30 @@ const styles = StyleSheet.create({
   actionButtonText: {
     ...tokens.typography.button,
   },
-  searchBar: {
-    marginHorizontal: tokens.spacing.lg,
+  trackingSection: {
     marginTop: tokens.spacing.lg,
-  },
-  section: {
-    marginTop: tokens.spacing.xl,
     marginHorizontal: tokens.spacing.lg,
+    padding: tokens.spacing.lg,
+    borderRadius: tokens.radii.card,
     gap: tokens.spacing.md,
+    ...tokens.shadows.sm,
+  },
+  searchBarWrapper: {
+    marginBottom: tokens.spacing.xs,
+  },
+  searchBarInCard: {
+    backgroundColor: '#F5F5F5', // Light gray background like in the image
+    shadowOpacity: 0, // Remove shadow from search bar
+    elevation: 0,
   },
   sectionTitle: {
     ...tokens.typography.h3,
-    marginBottom: tokens.spacing.xxs,
+    marginTop: tokens.spacing.xs,
   },
   skeletonCard: {
     padding: tokens.spacing.lg,
     borderRadius: tokens.radii.card,
-    ...tokens.shadows.md,
+    backgroundColor: tokens.colors.background,
+    marginTop: tokens.spacing.sm,
   },
 });

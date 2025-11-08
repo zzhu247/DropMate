@@ -3,12 +3,15 @@ import { FlatList, ListRenderItem, Pressable, StyleSheet, Text, View } from 'rea
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
+import { Plus } from 'lucide-react-native';
+
 import { FilterChipOption, FilterChips } from '@/components/FilterChips';
 import { SearchBar } from '@/components/SearchBar';
-import { ShipmentCard } from '@/components/ShipmentCard';
+import { CourierCard } from '@/components/CourierCard';
 import { EmptyState } from '@/components/EmptyState';
 import { useShipmentsListQuery } from '@/hooks/useShipmentsQuery';
 import { useTheme } from '@/theme/ThemeProvider';
+import { tokens } from '@/theme/tokens';
 import { Shipment } from '@/types';
 import { ROUTES } from '@/constants/routes';
 import { RootStackParamList } from '@/navigation/types';
@@ -37,41 +40,99 @@ export const TrackScreen: React.FC = () => {
 
   const shipments = useMemo(() => data ?? [], [data]);
 
+  // Helper functions for CourierCard
+  const getProgress = (shipment: Shipment) => {
+    const statusProgress = {
+      CREATED: 20,
+      IN_TRANSIT: 60,
+      OUT_FOR_DELIVERY: 80,
+      DELIVERED: 100,
+      EXCEPTION: 50,
+    };
+    return statusProgress[shipment.status] || 0;
+  };
+
+  const getShipmentLocations = (shipment: Shipment) => {
+    const checkpoints = shipment.checkpoints;
+    if (checkpoints.length === 0) return { origin: 'N/A', destination: 'N/A' };
+    
+    const first = checkpoints[0];
+    const last = checkpoints[checkpoints.length - 1];
+    
+    return {
+      origin: first.location || 'Origin',
+      destination: last.location || 'Destination',
+    };
+  };
+
+  const formatDate = (isoString: string) => {
+    const date = new Date(isoString);
+    return date.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+  };
+
   const renderItem = useCallback<ListRenderItem<Shipment>>(
-    ({ item }) => (
-      <ShipmentCard
-        shipment={item}
-        compactTimeline
-        onPress={() => navigation.navigate(ROUTES.ShipmentDetails, { shipmentId: item.id })}
-      />
-    ),
+    ({ item }) => {
+      const locations = getShipmentLocations(item);
+      const firstCheckpoint = item.checkpoints[0];
+      const lastCheckpoint = item.checkpoints[item.checkpoints.length - 1];
+      
+      return (
+        <View style={styles.cardWrapper}>
+          <CourierCard
+            trackingNumber={item.trackingNo}
+            status={item.status}
+            origin={locations.origin}
+            destination={locations.destination}
+            originDate={firstCheckpoint ? formatDate(firstCheckpoint.timeIso) : 'N/A'}
+            destinationDate={lastCheckpoint ? formatDate(lastCheckpoint.timeIso) : 'N/A'}
+            progress={getProgress(item)}
+            variant="yellow"
+            onPress={() => navigation.navigate(ROUTES.ShipmentDetails, { shipmentId: item.id })}
+          />
+        </View>
+      );
+    },
     [navigation],
   );
 
   return (
     <SafeAreaView
-      style={[styles.safeArea, { backgroundColor: theme.semantic.background }]}
+      style={[styles.safeArea, { backgroundColor: theme.semantic.background || tokens.colors.background }]}
       edges={['top', 'left', 'right']}
     >
       <View style={styles.container}>
-        <Text style={[styles.heading, { color: theme.semantic.text }]}>{t('track.title')}</Text>
+        <Text style={[styles.heading, { color: theme.semantic.text || tokens.colors.textPrimary }]}>
+          {t('track.title')}
+        </Text>
+        
         <SearchBar
           placeholder={t('home.searchPlaceholder')}
           value={searchQuery}
           onChangeText={setSearchQuery}
           onSubmitEditing={() => undefined}
         />
-        <FilterChips options={statusOptions} value={statusFilter} onChange={setStatusFilter} />
+        
+        <FilterChips 
+          options={statusOptions} 
+          value={statusFilter} 
+          onChange={setStatusFilter}
+          style={styles.filterChips}
+        />
+        
         <FlatList
           data={shipments}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
-          contentContainerStyle={[styles.listContent, shipments.length === 0 ? styles.emptyContent : null]}
+          contentContainerStyle={[
+            styles.listContent, 
+            shipments.length === 0 ? styles.emptyContent : null
+          ]}
           ItemSeparatorComponent={() => <View style={styles.separator} />}
           initialNumToRender={6}
           windowSize={7}
           maxToRenderPerBatch={7}
           removeClippedSubviews
+          showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             !isLoading ? (
               <EmptyState
@@ -83,18 +144,23 @@ export const TrackScreen: React.FC = () => {
             ) : null
           }
         />
+        
         <Pressable
           accessibilityRole="button"
           style={({ pressed }) => [
             styles.addButton,
             {
-              backgroundColor: theme.colors.primaryTeal,
+              backgroundColor: theme.semantic.text || tokens.colors.textPrimary,
               opacity: pressed ? 0.9 : 1,
             },
           ]}
           onPress={() => navigation.navigate(ROUTES.AddTracking)}
         >
-          <Text style={styles.addButtonLabel}>{t('shipments.add')}</Text>
+          <Plus 
+            color={tokens.colors.surface} 
+            size={24} 
+            strokeWidth={2.5}
+          />
         </Pressable>
       </View>
     </SafeAreaView>
@@ -107,41 +173,39 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    padding: 16,
-    gap: 16,
+    paddingHorizontal: tokens.spacing.lg,
+    paddingTop: tokens.spacing.lg,
+    gap: tokens.spacing.md,
   },
   heading: {
-    fontSize: 22,
-    fontWeight: '600',
+    ...tokens.typography.h2,
+  },
+  filterChips: {
+    marginTop: tokens.spacing.xxs,
   },
   listContent: {
-    gap: 16,
-    paddingBottom: 120,
+    paddingBottom: 100,
+    paddingTop: tokens.spacing.xs,
   },
   emptyContent: {
     flexGrow: 1,
     justifyContent: 'center',
   },
+  cardWrapper: {
+    marginHorizontal: tokens.spacing.lg,
+  },
   separator: {
-    height: 1,
-    backgroundColor: '#00000010',
+    height: 0, // No separator needed since CourierCard has margins
   },
   addButton: {
     position: 'absolute',
-    bottom: 32,
-    right: 16,
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderRadius: 999,
-    shadowColor: '#000000',
-    shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 6 },
-    shadowRadius: 10,
-    elevation: 4,
-  },
-  addButtonLabel: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
+    bottom: tokens.spacing.xxxl - 8,
+    right: tokens.spacing.lg,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...tokens.shadows.lg,
   },
 });
