@@ -1,16 +1,41 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { ArrowLeft, Mail, Phone, MapPin, Calendar, Package } from 'lucide-react-native';
+import { ArrowLeft, Mail, Phone, MapPin, Calendar, Package, CheckCircle, AlertCircle } from 'lucide-react-native';
 
 import { useTheme } from '@/theme/ThemeProvider';
+import { useAuth } from '@/stores/useAuth';
 import { RootStackParamList } from '@/navigation/types';
 
 export const ProfileScreen: React.FC = () => {
   const theme = useTheme();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const user = useAuth((state) => state.user);
+
+  // Extract user info
+  const displayName = user?.displayName || user?.email?.split('@')[0] || 'User';
+  const email = user?.email || 'No email';
+  const isEmailVerified = user?.emailVerified || false;
+
+  // Generate initials from display name
+  const initials = useMemo(() => {
+    const nameParts = displayName.split(' ');
+    if (nameParts.length >= 2) {
+      return `${nameParts[0][0]}${nameParts[1][0]}`.toUpperCase();
+    }
+    return displayName.slice(0, 2).toUpperCase();
+  }, [displayName]);
+
+  // Format member since date from Firebase user creation time
+  const memberSince = useMemo(() => {
+    if (user?.metadata?.creationTime) {
+      const date = new Date(user.metadata.creationTime);
+      return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    }
+    return 'Recently';
+  }, [user]);
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.semantic.background }]} edges={['top']}>
@@ -29,12 +54,30 @@ export const ProfileScreen: React.FC = () => {
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         <View style={styles.profileHeader}>
           <View style={[styles.avatar, { backgroundColor: theme.colors.primaryTeal }]}>
-            <Text style={styles.avatarText}>JD</Text>
+            <Text style={styles.avatarText}>{initials}</Text>
           </View>
-          <Text style={[styles.name, { color: theme.semantic.text }]}>John Doe</Text>
+          <Text style={[styles.name, { color: theme.semantic.text }]}>{displayName}</Text>
           <Text style={[styles.memberSince, { color: theme.semantic.textMuted }]}>
-            Member since January 2024
+            Member since {memberSince}
           </Text>
+          {/* Email Verification Status */}
+          <View style={styles.verificationBadge}>
+            {isEmailVerified ? (
+              <>
+                <CheckCircle color={theme.colors.success} size={16} />
+                <Text style={[styles.verificationText, { color: theme.colors.success }]}>
+                  Email Verified
+                </Text>
+              </>
+            ) : (
+              <>
+                <AlertCircle color={theme.colors.warning} size={16} />
+                <Text style={[styles.verificationText, { color: theme.colors.warning }]}>
+                  Email Not Verified
+                </Text>
+              </>
+            )}
+          </View>
         </View>
 
         <View style={[styles.statsContainer, { backgroundColor: theme.semantic.surface }]}>
@@ -67,7 +110,7 @@ export const ProfileScreen: React.FC = () => {
               </View>
               <View style={styles.infoContent}>
                 <Text style={[styles.infoLabel, { color: theme.semantic.textMuted }]}>Email</Text>
-                <Text style={[styles.infoValue, { color: theme.semantic.text }]}>john.doe@example.com</Text>
+                <Text style={[styles.infoValue, { color: theme.semantic.text }]}>{email}</Text>
               </View>
             </View>
 
@@ -79,7 +122,9 @@ export const ProfileScreen: React.FC = () => {
               </View>
               <View style={styles.infoContent}>
                 <Text style={[styles.infoLabel, { color: theme.semantic.textMuted }]}>Phone</Text>
-                <Text style={[styles.infoValue, { color: theme.semantic.text }]}>+1 (555) 123-4567</Text>
+                <Text style={[styles.infoValue, { color: theme.semantic.text }]}>
+                  {user?.phoneNumber || 'Not provided'}
+                </Text>
               </View>
             </View>
 
@@ -201,6 +246,20 @@ const styles = StyleSheet.create({
   },
   memberSince: {
     fontSize: 14,
+  },
+  verificationBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  verificationText: {
+    fontSize: 13,
+    fontWeight: '500',
   },
   statsContainer: {
     flexDirection: 'row',

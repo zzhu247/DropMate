@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -14,6 +14,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Mail, Lock, Apple, Chrome } from 'lucide-react-native';
+import * as AppleAuthentication from 'expo-apple-authentication';
 
 import { ROUTES } from '@/constants/routes';
 import { t } from '@/i18n/i18n';
@@ -23,18 +24,11 @@ import { FormTextInput } from '@/components/FormTextInput';
 import { useAuth } from '@/stores/useAuth';
 
 const schema = z.object({
-  email: z
-    .string()
-    .refine(
-      (value) => value.trim() === 'admin' || z.string().email().safeParse(value.trim()).success,
-      'Enter a valid email.',
-    ),
+  email: z.string().email('Enter a valid email address.').min(1, 'Email is required.'),
   password: z
     .string()
-    .refine(
-      (value) => value.trim() === 'admin' || value.trim().length >= 6,
-      'Password must be at least 6 characters',
-    ),
+    .min(6, 'Password must be at least 6 characters.')
+    .min(1, 'Password is required.'),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -44,8 +38,12 @@ type LoginProps = NativeStackScreenProps<RootStackParamList, 'Login'>;
 export const LoginScreen: React.FC<LoginProps> = ({ navigation }) => {
   const theme = useTheme();
   const signIn = useAuth((state) => state.signIn);
+  const signInWithApple = useAuth((state) => state.signInWithApple);
   const status = useAuth((state) => state.status);
   const error = useAuth((state) => state.error);
+
+  const [isAppleAvailable, setIsAppleAvailable] = useState(false);
+  const [appleLoading, setAppleLoading] = useState(false);
 
   const {
     control,
@@ -56,22 +54,46 @@ export const LoginScreen: React.FC<LoginProps> = ({ navigation }) => {
     mode: 'onBlur',
   });
 
+  // Check if Apple Sign-In is available
+  React.useEffect(() => {
+    const checkAppleAvailability = async () => {
+      const available = await AppleAuthentication.isAvailableAsync();
+      setIsAppleAvailable(available);
+    };
+    checkAppleAvailability();
+  }, []);
+
   const isLoading = status === 'loading';
 
-  const ssoButtons = useMemo(
-    () => [
-      { key: 'google', label: 'Continue with Google', icon: <Chrome color={theme.colors.textPrimary} size={20} />, disabled: true },
-      { key: 'apple', label: 'Continue with Apple', icon: <Apple color={theme.colors.textPrimary} size={20} />, disabled: true },
-    ],
-    [theme.colors.textPrimary],
-  );
-
   const onSubmit = handleSubmit(async (values) => {
-    await signIn(values);
-    if (useAuth.getState().status === 'authenticated') {
-      navigation.replace(ROUTES.Main);
+    try {
+      await signIn(values);
+      // Navigation will happen automatically via auth state listener
+      // But we can also manually navigate if needed
+      if (useAuth.getState().status === 'authenticated') {
+        navigation.replace(ROUTES.Main);
+      }
+    } catch (err) {
+      // Error is already set in the auth store
+      console.error('Sign in error:', err);
     }
   });
+
+  const handleAppleSignIn = async () => {
+    setAppleLoading(true);
+    try {
+      await signInWithApple();
+      // Navigation will happen automatically via auth state listener
+      if (useAuth.getState().status === 'authenticated') {
+        navigation.replace(ROUTES.Main);
+      }
+    } catch (err) {
+      // Error is already set in the auth store
+      console.error('Apple sign in error:', err);
+    } finally {
+      setAppleLoading(false);
+    }
+  };
 
   return (
     <SafeAreaView
@@ -124,12 +146,13 @@ export const LoginScreen: React.FC<LoginProps> = ({ navigation }) => {
               />
             )}
           />
-          <Pressable accessibilityRole="button" style={styles.link}>
+          <Pressable
+            accessibilityRole="button"
+            style={styles.link}
+            onPress={() => navigation.navigate(ROUTES.ForgotPassword)}
+          >
             <Text style={[styles.linkText, { color: theme.colors.accent }]}>{t('login.forgotPassword')}</Text>
           </Pressable>
-          <Text style={[styles.demoHint, { color: theme.semantic.textMuted }]}>
-            Demo account: admin / admin
-          </Text>
           {error ? <Text style={[styles.error, { color: theme.colors.error }]}>{error}</Text> : null}
           <Pressable
             accessibilityRole="button"
@@ -152,25 +175,48 @@ export const LoginScreen: React.FC<LoginProps> = ({ navigation }) => {
           <View style={[styles.line, { backgroundColor: theme.semantic.border }]} />
         </View>
         <View style={styles.ssoGroup}>
-          {ssoButtons.map((button) => (
+          {/* Google Sign-In - Disabled for now */}
+          <Pressable
+            accessibilityRole="button"
+            style={({ pressed }) => [
+              styles.ssoButton,
+              {
+                borderColor: theme.semantic.border,
+                opacity: 0.5,
+              },
+            ]}
+            disabled={true}
+          >
+            <Chrome color={theme.colors.textPrimary} size={20} />
+            <Text style={[styles.ssoLabel, { color: theme.semantic.text }]}>Continue with Google</Text>
+          </Pressable>
+
+          {/* Apple Sign-In - Enabled on iOS */}
+          {isAppleAvailable && (
             <Pressable
-              key={button.key}
               accessibilityRole="button"
+              onPress={handleAppleSignIn}
+              disabled={appleLoading || isLoading}
               style={({ pressed }) => [
                 styles.ssoButton,
                 {
                   borderColor: theme.semantic.border,
-                  opacity: pressed ? 0.9 : 1,
+                  opacity: pressed || appleLoading || isLoading ? 0.7 : 1,
                 },
               ]}
-              disabled={button.disabled}
             >
-              {button.icon}
-              <Text style={[styles.ssoLabel, { color: theme.semantic.text }]}>{button.label}</Text>
+              <Apple color={theme.colors.textPrimary} size={20} />
+              <Text style={[styles.ssoLabel, { color: theme.semantic.text }]}>
+                {appleLoading ? 'Signing in…' : 'Continue with Apple'}
+              </Text>
             </Pressable>
-          ))}
+          )}
         </View>
-        <Pressable accessibilityRole="button" style={styles.signUpLink}>
+        <Pressable
+          accessibilityRole="button"
+          style={styles.signUpLink}
+          onPress={() => navigation.navigate(ROUTES.Signup)}
+        >
           <Text style={[styles.linkText, { color: theme.colors.accent }]}>{t('login.signUp')}</Text>
         </Pressable>
       </ScrollView>

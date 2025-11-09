@@ -34,6 +34,7 @@ export const colors = {
   // Accent & Actions
   accent: '#00C2FF',
   accentLight: '#E5F7FF',
+  primaryTeal: '#00C2FF', // Alias for accent (backward compatibility)
   
   // Semantic colors
   success: '#34C759',

@@ -12,6 +12,8 @@ import { RootStackParamList, BottomTabParamList } from './types';
 import { SplashScreen } from '@/screens/Splash';
 import { TutorialScreen } from '@/screens/Tutorial';
 import { LoginScreen } from '@/screens/Login';
+import { SignupScreen } from '@/screens/Signup';
+import { ForgotPasswordScreen } from '@/screens/ForgotPassword';
 import { HomeScreen } from '@/screens/Home';
 import { TrackScreen } from '@/screens/Track';
 import { MapScreen } from '@/screens/Map';
@@ -150,6 +152,8 @@ export const RootNavigator: React.FC = () => {
         <Stack.Screen name={ROUTES.Splash} component={SplashScreen} />
         <Stack.Screen name={ROUTES.Tutorial} component={TutorialScreen} />
         <Stack.Screen name={ROUTES.Login} component={LoginScreen} />
+        <Stack.Screen name={ROUTES.Signup} component={SignupScreen} />
+        <Stack.Screen name={ROUTES.ForgotPassword} component={ForgotPasswordScreen} />
         <Stack.Screen name={ROUTES.Main} component={TabNavigator} />
         <Stack.Screen
           name={ROUTES.Profile}

@@ -2,6 +2,8 @@ export const ROUTES = {
   Splash: 'Splash',
   Tutorial: 'Tutorial',
   Login: 'Login',
+  Signup: 'Signup',
+  ForgotPassword: 'ForgotPassword',
   Main: 'Main',
   Profile: 'Profile',
   ShipmentDetails: 'ShipmentDetails',

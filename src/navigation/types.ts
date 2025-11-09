@@ -11,6 +11,8 @@ export type RootStackParamList = {
   Splash: undefined;
   Tutorial: undefined;
   Login: undefined;
+  Signup: undefined;
+  ForgotPassword: undefined;
   Main: NavigatorScreenParams<BottomTabParamList> | undefined;
   Profile: undefined;
   ShipmentDetails: { shipmentId: string };
