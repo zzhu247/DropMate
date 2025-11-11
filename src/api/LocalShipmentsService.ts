@@ -115,24 +115,35 @@ export class LocalShipmentsService implements IShipmentsService {
       trackingNo: input.trackingNo.trim(),
       carrier: input.carrier,
       nickname: input.nickname?.trim() || undefined,
+      itemDescription: input.itemDescription?.trim() || undefined,
       status: 'CREATED',
       checkpoints: [
         {
           code: 'CREATED',
           label: 'Label created',
           timeIso: now,
-          location: 'Pending origin scan',
+          location: input.origin?.address || 'Pending origin scan',
         },
       ],
       etaIso: undefined,
       lastUpdatedIso: now,
+      origin: input.origin,
+      destination: input.destination,
     };
 
     const nextShipments = [newShipment, ...shipments];
     await this.persistShipments(nextShipments);
 
     const routes = await this.loadRoutes();
-    routes[newShipment.id] = { coordinates: [] };
+    // If we have origin and destination, initialize route with coordinates
+    const coordinates = [];
+    if (input.origin) {
+      coordinates.push({ lat: input.origin.lat, lng: input.origin.lng });
+    }
+    if (input.destination) {
+      coordinates.push({ lat: input.destination.lat, lng: input.destination.lng });
+    }
+    routes[newShipment.id] = { coordinates };
     await this.persistRoutes(routes);
 
     return newShipment;

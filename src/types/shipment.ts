@@ -33,6 +33,7 @@ export type Shipment = {
   trackingNo: string;
   carrier: 'UPS' | 'FedEx' | 'DHL' | 'CanadaPost' | 'Other';
   nickname?: string;
+  itemDescription?: string;
   status: Checkpoint['code'];
   etaIso?: string;
   checkpoints: Checkpoint[];

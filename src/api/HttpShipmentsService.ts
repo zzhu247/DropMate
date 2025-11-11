@@ -38,6 +38,7 @@ export class HttpShipmentsService implements IShipmentsService {
     await sleep(latency());
 
     // TODO: Replace stub with POST /shipments.
+    // When backend is ready, the API should accept the full input including origin, destination, and itemDescription
     // const response = await apiClient.post<Shipment>('/shipments', input);
     // return response.data;
     const now = new Date().toISOString();
@@ -46,15 +47,19 @@ export class HttpShipmentsService implements IShipmentsService {
       trackingNo: input.trackingNo,
       carrier: input.carrier,
       nickname: input.nickname,
+      itemDescription: input.itemDescription,
       status: 'CREATED',
       checkpoints: [
         {
           code: 'CREATED',
           label: 'Label created',
           timeIso: now,
+          location: input.origin?.address,
         },
       ],
       lastUpdatedIso: now,
+      origin: input.origin,
+      destination: input.destination,
     };
   }
 

@@ -1,4 +1,4 @@
-import { Shipment } from '@/types';
+import { Shipment, LocationPoint } from '@/types';
 
 export type ListShipmentsOptions = {
   query?: string;
@@ -9,6 +9,9 @@ export type CreateShipmentInput = {
   trackingNo: string;
   carrier: Shipment['carrier'];
   nickname?: string;
+  itemDescription?: string;
+  origin?: LocationPoint;
+  destination?: LocationPoint;
 };
 
 export type ShipmentRoute = {

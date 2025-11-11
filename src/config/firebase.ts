@@ -1,12 +1,10 @@
 import { initializeApp, FirebaseApp, getApp } from 'firebase/app';
 import { initializeAuth, getAuth, Auth } from 'firebase/auth';
-// @ts-ignore - getReactNativePersistence exists in @firebase/auth but not in types
-import { getReactNativePersistence } from '@firebase/auth/dist/rn/index.js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Firebase configuration
 const firebaseConfig = {
-  apiKey: process.env.FIREBASE_API_KEY || '',
+  apiKey: 'AIzaSyDhVe6Q8aJyK0vAWMJsrPIECw7hQZiVD5o',
   authDomain: 'dropmate-9dc10.firebaseapp.com',
   projectId: 'dropmate-9dc10',
   storageBucket: 'dropmate-9dc10.firebasestorage.app',
@@ -28,11 +26,18 @@ try {
   // If no app exists, initialize one
   app = initializeApp(firebaseConfig);
 
-  // Initialize Auth with React Native AsyncStorage persistence
-  // This ensures auth state persists across app restarts
-  auth = initializeAuth(app, {
-    persistence: getReactNativePersistence(AsyncStorage),
-  });
+  // Initialize Auth with AsyncStorage persistence for React Native
+  // Import getReactNativePersistence dynamically to avoid TypeScript errors
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { getReactNativePersistence } = require('firebase/auth/react-native');
+    auth = initializeAuth(app, {
+      persistence: getReactNativePersistence(AsyncStorage),
+    });
+  } catch {
+    // Fallback to regular auth if react-native persistence is not available
+    auth = getAuth(app);
+  }
 }
 
 export { app, auth };
