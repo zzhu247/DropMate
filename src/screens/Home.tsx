@@ -160,7 +160,7 @@ export const HomeScreen: React.FC = () => {
         <View style={styles.actionButtons}>
           <Pressable 
             style={[styles.actionButton, { backgroundColor: theme.semantic.surface || tokens.colors.surface }]}
-            onPress={handleAddTracking}
+            onPress={() => navigation.navigate(ROUTES.PlaceOrder)}
           >
             <Truck size={20} color={theme.semantic.text || tokens.colors.textPrimary} strokeWidth={2.5} />
             <Text style={[styles.actionButtonText, { color: theme.semantic.text || tokens.colors.textPrimary }]}>

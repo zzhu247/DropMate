@@ -136,7 +136,7 @@ export const ShipmentDetailsScreen: React.FC = () => {
   if (!shipment) {
     return (
       <SafeAreaView
-        style={[styles.loading, { backgroundColor: theme.semantic.background || tokens.colors.primaryBeige }]}
+        style={[styles.loading, { backgroundColor: tokens.colors.cardBackgroundYellow }]}
         edges={['top', 'left', 'right']}
       >
         <Text style={{ color: theme.semantic.text || tokens.colors.textPrimary }}>Loading shipment…</Text>
@@ -146,11 +146,11 @@ export const ShipmentDetailsScreen: React.FC = () => {
 
   return (
     <SafeAreaView
-      style={[styles.safeArea, { backgroundColor: theme.semantic.background || tokens.colors.primaryBeige }]}
+      style={[styles.safeArea, { backgroundColor: tokens.colors.cardBackgroundYellow }]}
       edges={['top', 'left', 'right']}
     >
       {/* Header */}
-      <View style={[styles.header, { backgroundColor: theme.semantic.background || tokens.colors.primaryBeige }]}>
+      <View style={[styles.header, { backgroundColor: tokens.colors.cardBackgroundYellow }]}>
         <Pressable 
           onPress={() => navigation.goBack()} 
           style={styles.backButton} 
