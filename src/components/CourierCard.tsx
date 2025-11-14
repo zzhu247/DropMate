@@ -20,7 +20,7 @@ export type CourierCardProps = {
   location?: string;
   updatedIso?: string;
   onPress?: () => void;
-  variant?: 'yellow' | 'blue' | 'white' | 'green'; // Background color variant
+  variant?: 'yellow' | 'blue' | 'white' | 'green'; // Added green for delivered
 };
 
 export const CourierCard: React.FC<CourierCardProps> = ({
@@ -79,6 +79,8 @@ export const CourierCard: React.FC<CourierCardProps> = ({
         return tokens.colors.cardBackgroundYellow;
       case 'blue':
         return tokens.colors.cardBackgroundBlue;
+      case 'green':
+        return tokens.colors.cardBackgroundGreen;
       case 'white':
       default:
         return theme.semantic.surface || tokens.colors.surface;
@@ -174,7 +176,7 @@ export const CourierCard: React.FC<CourierCardProps> = ({
 
 const styles = StyleSheet.create({
   card: {
-    marginHorizontal: 0, // Remove horizontal margin since it's inside a card now
+    marginHorizontal: tokens.spacing.lg, // Re-add margins
     marginBottom: tokens.spacing.md,
     borderRadius: tokens.radii.card,
     overflow: 'visible',
@@ -189,7 +191,7 @@ const styles = StyleSheet.create({
   statusBadge: {
     alignSelf: 'flex-start',
     paddingHorizontal: tokens.spacing.sm,
-    paddingVertical: tokens.spacing.xxs,
+    paddingVertical: tokens.spacing.xxs + 1,
     borderRadius: tokens.radii.pill,
   },
   statusText: {
@@ -198,13 +200,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   trackingNumber: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '700',
-    lineHeight: 24,
+    lineHeight: 26,
   },
   timelineContainer: {
     paddingHorizontal: 0,
-    marginVertical: tokens.spacing.xxs,
+    marginVertical: tokens.spacing.sm,
   },
   timeline: {
     height: 3,
@@ -248,20 +250,20 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   locationName: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
-    lineHeight: 18,
+    lineHeight: 20,
   },
   locationDate: {
-    fontSize: 11,
+    fontSize: 12,
     lineHeight: 16,
   },
   packageIllustration: {
     position: 'absolute',
-    right: tokens.spacing.md,
-    bottom: tokens.spacing.sm,
-    width: 100,
-    height: 100,
+    right: tokens.spacing.lg,
+    bottom: tokens.spacing.lg,
+    width: 120,
+    height: 120,
   },
   packageImage: {
     width: '100%',

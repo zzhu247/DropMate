@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Bell, ChevronDown, Package, Eye, EyeOff, Truck, Clock } from 'lucide-react-native';
+import { Bell, ChevronDown, Plus, Package, Eye, EyeOff, Truck, Clock } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -30,7 +30,12 @@ export const HomeScreen: React.FC = () => {
 
   const currentShipments = useMemo(() => {
     if (!data) return [];
-    return data.filter(s => s.status === 'IN_TRANSIT' || s.status === 'OUT_FOR_DELIVERY').slice(0, 5); // Limit to 5
+    return data.filter(s => s.status === 'IN_TRANSIT' || s.status === 'OUT_FOR_DELIVERY').slice(0, 5);
+  }, [data]);
+
+  const totalActiveShipments = useMemo(() => {
+    if (!data) return 0;
+    return data.filter(s => s.status === 'IN_TRANSIT' || s.status === 'OUT_FOR_DELIVERY').length;
   }, [data]);
 
   const handleAddTracking = () => {
@@ -68,8 +73,24 @@ export const HomeScreen: React.FC = () => {
     return date.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
   };
 
+  // Get variant color based on status
+  const getVariant = (status: string): 'green' | 'yellow' | 'blue' | 'red' => {
+    switch (status) {
+      case 'OUT_FOR_DELIVERY':
+        return 'blue';
+      case 'IN_TRANSIT':
+        return 'green';
+      case 'EXCEPTION':
+        return 'red';
+      case 'DELIVERED':
+        return 'green';
+      default:
+        return 'yellow';
+    }
+  };
+
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.semantic.background || tokens.colors.background }]} edges={['top']}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.semantic.background || tokens.colors.primaryBeige }]} edges={['top']}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -123,9 +144,9 @@ export const HomeScreen: React.FC = () => {
               </Text>
               <Pressable onPress={() => setBalanceVisible(!balanceVisible)}>
                 {balanceVisible ? (
-                  <Eye size={18} color={theme.semantic.textMuted || tokens.colors.textTertiary} />
+                  <Eye size={20} color={theme.semantic.textMuted || tokens.colors.textTertiary} />
                 ) : (
-                  <EyeOff size={18} color={theme.semantic.textMuted || tokens.colors.textTertiary} />
+                  <EyeOff size={20} color={theme.semantic.textMuted || tokens.colors.textTertiary} />
                 )}
               </Pressable>
             </View>
@@ -200,29 +221,41 @@ export const HomeScreen: React.FC = () => {
               ))}
             </>
           ) : currentShipments.length > 0 ? (
-            currentShipments.map((shipment, index) => {
-              const locations = getShipmentLocations(shipment);
-              const firstCheckpoint = shipment.checkpoints[0];
-              const lastCheckpoint = shipment.checkpoints[shipment.checkpoints.length - 1];
+            <>
+              {currentShipments.map((shipment, index) => {
+                const locations = getShipmentLocations(shipment);
+                const firstCheckpoint = shipment.checkpoints[0];
+                const lastCheckpoint = shipment.checkpoints[shipment.checkpoints.length - 1];
+                const variant = getVariant(shipment.status);
+
+                return (
+                  <CourierCard
+                    key={shipment.id}
+                    trackingNumber={shipment.trackingNo}
+                    status={shipment.status}
+                    origin={locations.origin}
+                    destination={locations.destination}
+                    originDate={firstCheckpoint ? formatDate(firstCheckpoint.timeIso) : 'N/A'}
+                    destinationDate={lastCheckpoint ? formatDate(lastCheckpoint.timeIso) : 'N/A'}
+                    progress={getProgress(shipment)}
+                    variant={variant}
+                    onPress={() => navigation.navigate(ROUTES.ShipmentDetails, { shipmentId: shipment.id })}
+                  />
+                );
+              })}
               
-              // Use green for delivered, yellow for others
-              const variant = shipment.status === 'DELIVERED' ? 'green' : 'yellow';
-              
-              return (
-                <CourierCard
-                  key={shipment.id}
-                  trackingNumber={shipment.trackingNo}
-                  status={shipment.status}
-                  origin={locations.origin}
-                  destination={locations.destination}
-                  originDate={firstCheckpoint ? formatDate(firstCheckpoint.timeIso) : 'N/A'}
-                  destinationDate={lastCheckpoint ? formatDate(lastCheckpoint.timeIso) : 'N/A'}
-                  progress={getProgress(shipment)}
-                  variant={variant}
-                  onPress={() => navigation.navigate(ROUTES.ShipmentDetails, { shipmentId: shipment.id })}
-                />
-              );
-            })
+              {/* View More Button - Show if there are more than 5 shipments */}
+              {totalActiveShipments > 5 && (
+                <Pressable
+                  style={styles.viewMoreButton}
+                  onPress={() => navigation.navigate(ROUTES.Main, { screen: TABS.Track })}
+                >
+                  <Text style={[styles.viewMoreText, { color: theme.semantic.text || tokens.colors.textPrimary }]}>
+                    View More ({totalActiveShipments - 5} more)
+                  </Text>
+                </Pressable>
+              )}
+            </>
           ) : (
             <EmptyState
               title={t('home.emptyTitle')}
@@ -230,18 +263,6 @@ export const HomeScreen: React.FC = () => {
               actionLabel={t('home.emptyAction')}
               onActionPress={handleAddTracking}
             />
-          )}
-
-          {/* More Button - Show if there are more than 5 shipments */}
-          {data && data.filter(s => s.status === 'IN_TRANSIT' || s.status === 'OUT_FOR_DELIVERY').length > 5 && (
-            <Pressable
-              style={[styles.moreButton, { backgroundColor: theme.semantic.surface || tokens.colors.surface }]}
-              onPress={() => navigation.navigate(ROUTES.Main, { screen: 'TrackTab' })}
-            >
-              <Text style={[styles.moreButtonText, { color: theme.semantic.text || tokens.colors.textPrimary }]}>
-                View All Shipments
-              </Text>
-            </Pressable>
           )}
         </View>
       </ScrollView>
@@ -313,8 +334,8 @@ const styles = StyleSheet.create({
   },
   balanceCard: {
     marginHorizontal: tokens.spacing.lg,
-    marginTop: tokens.spacing.sm,
-    marginBottom: tokens.spacing.md,
+    marginTop: tokens.spacing.xs,
+    marginBottom: tokens.spacing.sm,
     paddingVertical: tokens.spacing.sm,
     paddingHorizontal: tokens.spacing.md,
     flexDirection: 'row',
@@ -334,7 +355,7 @@ const styles = StyleSheet.create({
     gap: tokens.spacing.xs,
   },
   balanceAmount: {
-    ...tokens.typography.h1,
+    ...tokens.typography.h2,
   },
   topUpButton: {
     paddingHorizontal: tokens.spacing.lg,
@@ -348,7 +369,7 @@ const styles = StyleSheet.create({
   actionButtons: {
     flexDirection: 'row',
     marginHorizontal: tokens.spacing.lg,
-    marginTop: tokens.spacing.lg,
+    marginTop: tokens.spacing.md,
     gap: tokens.spacing.sm,
   },
   actionButton: {
@@ -365,24 +386,25 @@ const styles = StyleSheet.create({
     ...tokens.typography.button,
   },
   trackingSection: {
-    marginTop: tokens.spacing.lg,
+    marginTop: tokens.spacing.md,
     marginHorizontal: tokens.spacing.lg,
-    padding: tokens.spacing.lg,
+    padding: tokens.spacing.md,
     borderRadius: tokens.radii.card,
-    gap: tokens.spacing.md,
+    gap: tokens.spacing.sm,
     ...tokens.shadows.sm,
   },
   searchBarWrapper: {
-    marginBottom: tokens.spacing.xs,
+    marginBottom: 0,
   },
   searchBarInCard: {
-    backgroundColor: '#F5F5F5', // Light gray background like in the image
-    shadowOpacity: 0, // Remove shadow from search bar
+    backgroundColor: tokens.colors.background,
+    shadowOpacity: 0,
     elevation: 0,
   },
   sectionTitle: {
-    ...tokens.typography.h3,
+    ...tokens.typography.h4,
     marginTop: tokens.spacing.xs,
+    marginBottom: tokens.spacing.xxs,
   },
   skeletonCard: {
     padding: tokens.spacing.lg,
@@ -390,14 +412,16 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colors.background,
     marginTop: tokens.spacing.sm,
   },
-  moreButton: {
-    padding: tokens.spacing.md,
+  viewMoreButton: {
+    paddingVertical: tokens.spacing.sm,
+    paddingHorizontal: tokens.spacing.md,
     borderRadius: tokens.radii.md,
+    borderWidth: 1,
+    borderColor: tokens.colors.border,
     alignItems: 'center',
     marginTop: tokens.spacing.xs,
-    ...tokens.shadows.sm,
   },
-  moreButtonText: {
+  viewMoreText: {
     ...tokens.typography.bodyMedium,
   },
 });

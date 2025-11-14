@@ -17,7 +17,8 @@ export const colors = {
   // Card backgrounds (for alternating colors)
   cardBackgroundYellow: '#FFF4E6',
   cardBackgroundBlue: '#E6F7FF',
-  cardBackgroundGreen: '#E6FFE7', // For delivered packages
+  cardBackgroundGreen: '#daf0daff', // For delivered packages
+  cardBackgroundRed: '#ffe6ebff',
   
   // Text
   textPrimary: '#000000',

@@ -76,20 +76,21 @@ export const TrackScreen: React.FC = () => {
       const firstCheckpoint = item.checkpoints[0];
       const lastCheckpoint = item.checkpoints[item.checkpoints.length - 1];
       
+      // Use green for delivered, yellow for others
+      const variant = item.status === 'DELIVERED' ? 'green' : 'yellow';
+      
       return (
-        <View style={styles.cardWrapper}>
-          <CourierCard
-            trackingNumber={item.trackingNo}
-            status={item.status}
-            origin={locations.origin}
-            destination={locations.destination}
-            originDate={firstCheckpoint ? formatDate(firstCheckpoint.timeIso) : 'N/A'}
-            destinationDate={lastCheckpoint ? formatDate(lastCheckpoint.timeIso) : 'N/A'}
-            progress={getProgress(item)}
-            variant="yellow"
-            onPress={() => navigation.navigate(ROUTES.ShipmentDetails, { shipmentId: item.id })}
-          />
-        </View>
+        <CourierCard
+          trackingNumber={item.trackingNo}
+          status={item.status}
+          origin={locations.origin}
+          destination={locations.destination}
+          originDate={firstCheckpoint ? formatDate(firstCheckpoint.timeIso) : 'N/A'}
+          destinationDate={lastCheckpoint ? formatDate(lastCheckpoint.timeIso) : 'N/A'}
+          progress={getProgress(item)}
+          variant={variant}
+          onPress={() => navigation.navigate(ROUTES.ShipmentDetails, { shipmentId: item.id })}
+        />
       );
     },
     [navigation],
