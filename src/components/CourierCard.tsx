@@ -20,7 +20,7 @@ export type CourierCardProps = {
   location?: string;
   updatedIso?: string;
   onPress?: () => void;
-  variant?: 'yellow' | 'blue' | 'white'; // Background color variant
+  variant?: 'yellow' | 'blue' | 'white' | 'green'; // Background color variant
 };
 
 export const CourierCard: React.FC<CourierCardProps> = ({

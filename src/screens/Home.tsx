@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Bell, ChevronDown, Plus, Package, Eye, EyeOff, Truck, Clock } from 'lucide-react-native';
+import { Bell, ChevronDown, Package, Eye, EyeOff, Truck, Clock } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -30,7 +30,7 @@ export const HomeScreen: React.FC = () => {
 
   const currentShipments = useMemo(() => {
     if (!data) return [];
-    return data.filter(s => s.status === 'IN_TRANSIT' || s.status === 'OUT_FOR_DELIVERY');
+    return data.filter(s => s.status === 'IN_TRANSIT' || s.status === 'OUT_FOR_DELIVERY').slice(0, 5); // Limit to 5
   }, [data]);
 
   const handleAddTracking = () => {
@@ -123,9 +123,9 @@ export const HomeScreen: React.FC = () => {
               </Text>
               <Pressable onPress={() => setBalanceVisible(!balanceVisible)}>
                 {balanceVisible ? (
-                  <Eye size={20} color={theme.semantic.textMuted || tokens.colors.textTertiary} />
+                  <Eye size={18} color={theme.semantic.textMuted || tokens.colors.textTertiary} />
                 ) : (
-                  <EyeOff size={20} color={theme.semantic.textMuted || tokens.colors.textTertiary} />
+                  <EyeOff size={18} color={theme.semantic.textMuted || tokens.colors.textTertiary} />
                 )}
               </Pressable>
             </View>
@@ -141,7 +141,7 @@ export const HomeScreen: React.FC = () => {
         <View style={styles.actionButtons}>
           <Pressable 
             style={[styles.actionButton, { backgroundColor: theme.semantic.surface || tokens.colors.surface }]}
-            onPress={() => navigation.navigate(ROUTES.PlaceOrder)}
+            onPress={handleAddTracking}
           >
             <Truck size={20} color={theme.semantic.text || tokens.colors.textPrimary} strokeWidth={2.5} />
             <Text style={[styles.actionButtonText, { color: theme.semantic.text || tokens.colors.textPrimary }]}>
@@ -205,6 +205,9 @@ export const HomeScreen: React.FC = () => {
               const firstCheckpoint = shipment.checkpoints[0];
               const lastCheckpoint = shipment.checkpoints[shipment.checkpoints.length - 1];
               
+              // Use green for delivered, yellow for others
+              const variant = shipment.status === 'DELIVERED' ? 'green' : 'yellow';
+              
               return (
                 <CourierCard
                   key={shipment.id}
@@ -215,7 +218,7 @@ export const HomeScreen: React.FC = () => {
                   originDate={firstCheckpoint ? formatDate(firstCheckpoint.timeIso) : 'N/A'}
                   destinationDate={lastCheckpoint ? formatDate(lastCheckpoint.timeIso) : 'N/A'}
                   progress={getProgress(shipment)}
-                  variant="yellow"
+                  variant={variant}
                   onPress={() => navigation.navigate(ROUTES.ShipmentDetails, { shipmentId: shipment.id })}
                 />
               );
@@ -227,6 +230,18 @@ export const HomeScreen: React.FC = () => {
               actionLabel={t('home.emptyAction')}
               onActionPress={handleAddTracking}
             />
+          )}
+
+          {/* More Button - Show if there are more than 5 shipments */}
+          {data && data.filter(s => s.status === 'IN_TRANSIT' || s.status === 'OUT_FOR_DELIVERY').length > 5 && (
+            <Pressable
+              style={[styles.moreButton, { backgroundColor: theme.semantic.surface || tokens.colors.surface }]}
+              onPress={() => navigation.navigate(ROUTES.Main, { screen: 'TrackTab' })}
+            >
+              <Text style={[styles.moreButtonText, { color: theme.semantic.text || tokens.colors.textPrimary }]}>
+                View All Shipments
+              </Text>
+            </Pressable>
           )}
         </View>
       </ScrollView>
@@ -300,7 +315,8 @@ const styles = StyleSheet.create({
     marginHorizontal: tokens.spacing.lg,
     marginTop: tokens.spacing.sm,
     marginBottom: tokens.spacing.md,
-    padding: tokens.spacing.md,
+    paddingVertical: tokens.spacing.sm,
+    paddingHorizontal: tokens.spacing.md,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -309,20 +325,20 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   balanceLabel: {
-    ...tokens.typography.small,
-    marginBottom: tokens.spacing.xs,
+    ...tokens.typography.caption,
+    marginBottom: tokens.spacing.xxs,
   },
   balanceRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: tokens.spacing.sm,
+    gap: tokens.spacing.xs,
   },
   balanceAmount: {
     ...tokens.typography.h1,
   },
   topUpButton: {
-    paddingHorizontal: tokens.spacing.xl,
-    paddingVertical: tokens.spacing.sm,
+    paddingHorizontal: tokens.spacing.lg,
+    paddingVertical: tokens.spacing.xs,
     borderRadius: tokens.radii.pill,
     ...tokens.shadows.sm,
   },
@@ -373,5 +389,15 @@ const styles = StyleSheet.create({
     borderRadius: tokens.radii.card,
     backgroundColor: tokens.colors.background,
     marginTop: tokens.spacing.sm,
+  },
+  moreButton: {
+    padding: tokens.spacing.md,
+    borderRadius: tokens.radii.md,
+    alignItems: 'center',
+    marginTop: tokens.spacing.xs,
+    ...tokens.shadows.sm,
+  },
+  moreButtonText: {
+    ...tokens.typography.bodyMedium,
   },
 });
