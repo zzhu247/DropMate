@@ -1,74 +1,120 @@
-import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Text, View, Pressable, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { ArrowLeft, Package, MapPin, User, Phone, Clock } from 'lucide-react-native';
+import React, { useState } from "react";
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  Pressable,
+  Alert,
+  Modal,
+  Animated,
+  Easing,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import {
+  ArrowLeft,
+  Package,
+  MapPin,
+  User,
+  Phone,
+  Clock,
+  X,
+} from "lucide-react-native";
 
-import { FormTextInput } from '@/components/FormTextInput';
-import { useTheme } from '@/theme/ThemeProvider';
-import { tokens } from '@/theme/tokens';
-import { RootStackParamList } from '@/navigation/types';
+import { FormTextInput } from "@/components/FormTextInput";
+import { useTheme } from "@/theme/ThemeProvider";
+import { tokens } from "@/theme/tokens";
+import { RootStackParamList } from "@/navigation/types";
 
-// Generate time slots from 9 AM to 10 PM in 30-minute windows
-const generateTimeSlots = () => {
-  const slots: string[] = [];
-  for (let hour = 9; hour <= 22; hour++) {
-    for (let minute = 0; minute < 60; minute += 30) {
-      if (hour === 22 && minute > 0) break; // Stop at 10:00 PM
-      const time = new Date();
-      time.setHours(hour, minute, 0);
-      const timeString = time.toLocaleTimeString('en-US', { 
-        hour: 'numeric', 
-        minute: '2-digit',
-        hour12: true 
-      });
-      slots.push(timeString);
-    }
+/* ----------------------------- TIME SLOTS ----------------------------- */
+
+const TIME_SLOTS = [
+  "9:00 AM", "9:30 AM", "10:00 AM", "10:30 AM",
+  "11:00 AM", "11:30 AM", "12:00 PM", "12:30 PM",
+  "1:00 PM", "1:30 PM", "2:00 PM", "2:30 PM",
+  "3:00 PM", "3:30 PM", "4:00 PM", "4:30 PM",
+  "5:00 PM", "5:30 PM", "6:00 PM", "6:30 PM",
+  "7:00 PM", "7:30 PM", "8:00 PM", "8:30 PM",
+  "9:00 PM", "9:30 PM", "10:00 PM",
+];
+
+/* ----------------------- PHONE SANITIZER ----------------------- */
+
+const ensurePlusOnePrefix = (text: string) => {
+  let cleaned = text.replace(/[^0-9+]/g, "");
+  if (!cleaned.startsWith("+1")) {
+    cleaned = "+1" + cleaned.replace(/[^0-9]/g, "");
   }
-  return slots;
+  return cleaned;
 };
 
-const TIME_SLOTS = generateTimeSlots();
+/* --------------------------------------------------------------------- */
 
 export const PlaceOrderScreen: React.FC = () => {
   const theme = useTheme();
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
-  // Form state
-  const [senderName, setSenderName] = useState('');
-  const [senderPhone, setSenderPhone] = useState('');
-  const [senderAddress, setSenderAddress] = useState('');
+  // FORM
+  const [senderName, setSenderName] = useState("");
+  const [senderPhone, setSenderPhone] = useState("+1");
+  const [senderAddress, setSenderAddress] = useState("");
 
-  const [receiverName, setReceiverName] = useState('');
-  const [receiverPhone, setReceiverPhone] = useState('');
-  const [receiverAddress, setReceiverAddress] = useState('');
+  const [receiverName, setReceiverName] = useState("");
+  const [receiverPhone, setReceiverPhone] = useState("+1");
+  const [receiverAddress, setReceiverAddress] = useState("");
 
-  const [packageWeight, setPackageWeight] = useState('');
-  const [packageDescription, setPackageDescription] = useState('');
-  
-  // Optional preferred time
+  const [packageWeight, setPackageWeight] = useState("");
+  const [packageDescription, setPackageDescription] = useState("");
+
+  // TIME PICKER
   const [preferredTime, setPreferredTime] = useState<string | null>(null);
   const [showTimePicker, setShowTimePicker] = useState(false);
+
+  // ANIMATION
+  const slideAnim = useState(new Animated.Value(0))[0];
+
+  const openSheet = () => {
+    setShowTimePicker(true);
+    Animated.timing(slideAnim, {
+      toValue: 1,
+      duration: 250,
+      easing: Easing.out(Easing.ease),
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const closeSheet = () => {
+    Animated.timing(slideAnim, {
+      toValue: 0,
+      duration: 200,
+      easing: Easing.in(Easing.ease),
+      useNativeDriver: true,
+    }).start(() => {
+      setShowTimePicker(false);
+    });
+  };
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
-    // Sender validation
-    if (!senderName.trim()) newErrors.senderName = 'Sender name is required';
-    if (!senderPhone.trim()) newErrors.senderPhone = 'Sender phone is required';
-    if (!senderAddress.trim()) newErrors.senderAddress = 'Sender address is required';
+    if (!senderName.trim()) newErrors.senderName = "Sender name is required";
+    if (senderPhone === "+1") newErrors.senderPhone = "Sender phone is required";
+    if (!senderAddress.trim()) newErrors.senderAddress = "Sender address is required";
 
-    // Receiver validation
-    if (!receiverName.trim()) newErrors.receiverName = 'Receiver name is required';
-    if (!receiverPhone.trim()) newErrors.receiverPhone = 'Receiver phone is required';
-    if (!receiverAddress.trim()) newErrors.receiverAddress = 'Receiver address is required';
+    if (!receiverName.trim()) newErrors.receiverName = "Receiver name is required";
+    if (receiverPhone === "+1")
+      newErrors.receiverPhone = "Receiver phone is required";
+    if (!receiverAddress.trim())
+      newErrors.receiverAddress = "Receiver address is required";
 
-    // Package validation
-    if (!packageWeight.trim()) newErrors.packageWeight = 'Weight is required';
-    if (!packageDescription.trim()) newErrors.packageDescription = 'Description is required';
+    if (!packageWeight.trim()) newErrors.packageWeight = "Weight is required";
+    if (!packageDescription.trim())
+      newErrors.packageDescription = "Description is required";
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -76,7 +122,7 @@ export const PlaceOrderScreen: React.FC = () => {
 
   const handlePlaceOrder = () => {
     if (!validateForm()) {
-      Alert.alert('Error', 'Please fill in all required fields');
+      Alert.alert("Error", "Please fill in all required fields");
       return;
     }
 
@@ -95,57 +141,57 @@ export const PlaceOrderScreen: React.FC = () => {
         weight: packageWeight,
         description: packageDescription,
       },
-      preferredTime: preferredTime || null, // Optional
+      preferredTime: preferredTime,
     };
 
-    console.log('Order Data:', orderData);
+    console.log("Order Data:", orderData);
 
-    Alert.alert(
-      'Success',
-      'Your order has been placed successfully!',
-      [
-        {
-          text: 'OK',
-          onPress: () => navigation.goBack(),
-        },
-      ]
-    );
+    Alert.alert("Success", "Your order has been placed.", [
+      { text: "OK", onPress: () => navigation.goBack() },
+    ]);
   };
 
   return (
-    <SafeAreaView 
-      style={[styles.safeArea, { backgroundColor: theme.semantic.background || tokens.colors.primaryBeige }]}
-      edges={['top', 'left', 'right']}
+    <SafeAreaView
+      style={[
+        styles.safeArea,
+        { backgroundColor: theme.semantic.background || tokens.colors.primaryBeige },
+      ]}
+      edges={["top", "left", "right"]}
     >
-      {/* Header */}
-      <View style={[styles.header, { backgroundColor: theme.semantic.background || tokens.colors.primaryBeige }]}>
-        <Pressable 
-          onPress={() => navigation.goBack()} 
-          style={styles.backButton}
-          accessibilityRole="button"
-        >
-          <ArrowLeft 
-            color={theme.semantic.text || tokens.colors.textPrimary} 
-            size={24}
-            strokeWidth={2}
-          />
+      {/* HEADER */}
+      <View
+        style={[
+          styles.header,
+          { backgroundColor: theme.semantic.background || tokens.colors.primaryBeige },
+        ]}
+      >
+        <Pressable style={styles.backButton} onPress={() => navigation.goBack()}>
+          <ArrowLeft color={theme.semantic.text} size={24} />
         </Pressable>
-        <Text style={[styles.headerTitle, { color: theme.semantic.text || tokens.colors.textPrimary }]}>
+
+        <Text style={[styles.headerTitle, { color: theme.semantic.text }]}>
           Place Order
         </Text>
-        <View style={styles.headerSpacer} />
+
+        <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView 
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Sender Section */}
-        <View style={[styles.section, { backgroundColor: theme.semantic.surface || tokens.colors.surface }]}>
+        {/* --- SENDER --- */}
+        <View
+          style={[
+            styles.section,
+            { backgroundColor: theme.semantic.surface || tokens.colors.surface },
+          ]}
+        >
           <View style={styles.sectionHeader}>
-            <MapPin size={20} color={theme.semantic.text || tokens.colors.textPrimary} strokeWidth={2} />
-            <Text style={[styles.sectionTitle, { color: theme.semantic.text || tokens.colors.textPrimary }]}>
+            <MapPin size={20} color={theme.semantic.text} />
+            <Text style={[styles.sectionTitle, { color: theme.semantic.text }]}>
               Sender Information
             </Text>
           </View>
@@ -156,35 +202,40 @@ export const PlaceOrderScreen: React.FC = () => {
             value={senderName}
             onChangeText={setSenderName}
             errorMessage={errors.senderName}
-            leftAccessory={<User size={18} color={theme.semantic.textMuted || tokens.colors.textSecondary} />}
+            leftAccessory={<User size={18} color={theme.semantic.textMuted} />}
           />
 
           <FormTextInput
             label="Phone Number"
-            placeholder="+1 (555) 000-0000"
+            placeholder="+1"
             value={senderPhone}
-            onChangeText={setSenderPhone}
-            keyboardType="phone-pad"
+            onChangeText={(t) => setSenderPhone(ensurePlusOnePrefix(t))}
+            keyboardType="number-pad"
             errorMessage={errors.senderPhone}
-            leftAccessory={<Phone size={18} color={theme.semantic.textMuted || tokens.colors.textSecondary} />}
+            leftAccessory={<Phone size={18} color={theme.semantic.textMuted} />}
           />
 
           <FormTextInput
             label="Address"
-            placeholder="123 Main Street, Toronto, ON M5V 3A8"
+            placeholder="123 Main St, Toronto"
             value={senderAddress}
             onChangeText={setSenderAddress}
-            errorMessage={errors.senderAddress}
             multiline
             numberOfLines={2}
+            errorMessage={errors.senderAddress}
           />
         </View>
 
-        {/* Receiver Section */}
-        <View style={[styles.section, { backgroundColor: theme.semantic.surface || tokens.colors.surface }]}>
+        {/* --- RECEIVER --- */}
+        <View
+          style={[
+            styles.section,
+            { backgroundColor: theme.semantic.surface || tokens.colors.surface },
+          ]}
+        >
           <View style={styles.sectionHeader}>
-            <MapPin size={20} color={theme.semantic.text || tokens.colors.textPrimary} strokeWidth={2} />
-            <Text style={[styles.sectionTitle, { color: theme.semantic.text || tokens.colors.textPrimary }]}>
+            <MapPin size={20} color={theme.semantic.text} />
+            <Text style={[styles.sectionTitle, { color: theme.semantic.text }]}>
               Receiver Information
             </Text>
           </View>
@@ -195,35 +246,40 @@ export const PlaceOrderScreen: React.FC = () => {
             value={receiverName}
             onChangeText={setReceiverName}
             errorMessage={errors.receiverName}
-            leftAccessory={<User size={18} color={theme.semantic.textMuted || tokens.colors.textSecondary} />}
+            leftAccessory={<User size={18} color={theme.semantic.textMuted} />}
           />
 
           <FormTextInput
             label="Phone Number"
-            placeholder="+1 (555) 000-0000"
+            placeholder="+1"
             value={receiverPhone}
-            onChangeText={setReceiverPhone}
-            keyboardType="phone-pad"
+            onChangeText={(t) => setReceiverPhone(ensurePlusOnePrefix(t))}
+            keyboardType="number-pad"
             errorMessage={errors.receiverPhone}
-            leftAccessory={<Phone size={18} color={theme.semantic.textMuted || tokens.colors.textSecondary} />}
+            leftAccessory={<Phone size={18} color={theme.semantic.textMuted} />}
           />
 
           <FormTextInput
             label="Address"
-            placeholder="456 Oak Avenue, Vancouver, BC V6B 2W9"
+            placeholder="456 Oak Ave, Vancouver"
             value={receiverAddress}
             onChangeText={setReceiverAddress}
-            errorMessage={errors.receiverAddress}
             multiline
             numberOfLines={2}
+            errorMessage={errors.receiverAddress}
           />
         </View>
 
-        {/* Package Section */}
-        <View style={[styles.section, { backgroundColor: theme.semantic.surface || tokens.colors.surface }]}>
+        {/* --- PACKAGE --- */}
+        <View
+          style={[
+            styles.section,
+            { backgroundColor: theme.semantic.surface || tokens.colors.surface },
+          ]}
+        >
           <View style={styles.sectionHeader}>
-            <Package size={20} color={theme.semantic.text || tokens.colors.textPrimary} strokeWidth={2} />
-            <Text style={[styles.sectionTitle, { color: theme.semantic.text || tokens.colors.textPrimary }]}>
+            <Package size={20} color={theme.semantic.text} />
+            <Text style={[styles.sectionTitle, { color: theme.semantic.text }]}>
               Package Details
             </Text>
           </View>
@@ -239,7 +295,7 @@ export const PlaceOrderScreen: React.FC = () => {
 
           <FormTextInput
             label="Description"
-            placeholder="Books, Electronics, Clothing, etc."
+            placeholder="Books, Electronics, Clothing..."
             value={packageDescription}
             onChangeText={setPackageDescription}
             errorMessage={errors.packageDescription}
@@ -248,134 +304,152 @@ export const PlaceOrderScreen: React.FC = () => {
           />
         </View>
 
-        {/* Preferred Time Section (Optional) */}
-        <View style={[styles.section, { backgroundColor: theme.semantic.surface || tokens.colors.surface }]}>
+        {/* --- TIME PICKER --- */}
+        <View
+          style={[
+            styles.section,
+            { backgroundColor: theme.semantic.surface || tokens.colors.surface },
+          ]}
+        >
           <View style={styles.sectionHeader}>
-            <Clock size={20} color={theme.semantic.text || tokens.colors.textPrimary} strokeWidth={2} />
-            <Text style={[styles.sectionTitle, { color: theme.semantic.text || tokens.colors.textPrimary }]}>
+            <Clock size={20} color={theme.semantic.text} />
+            <Text style={[styles.sectionTitle, { color: theme.semantic.text }]}>
               Preferred Delivery Time
             </Text>
-            <Text style={[styles.optionalBadge, { color: theme.semantic.textMuted || tokens.colors.textSecondary }]}>
+            <Text style={[styles.optionalBadge, { color: theme.semantic.textMuted }]}>
               (Optional)
             </Text>
           </View>
 
           <Pressable
-            style={[styles.timePickerButton, { 
-              backgroundColor: tokens.colors.cardBackgroundYellow,
-              borderColor: theme.semantic.border || tokens.colors.border,
-            }]}
-            onPress={() => setShowTimePicker(!showTimePicker)}
+            style={[
+              styles.timePickerButton,
+              {
+                backgroundColor: tokens.colors.cardBackgroundYellow,
+                borderColor: theme.semantic.border,
+              },
+            ]}
+            onPress={openSheet}
           >
-            <Clock size={18} color={theme.semantic.text || tokens.colors.textPrimary} />
-            <Text style={[styles.timePickerText, { color: theme.semantic.text || tokens.colors.textPrimary }]}>
-              {preferredTime || 'Select preferred time'}
+            <Clock size={18} color={theme.semantic.text} />
+            <Text style={[styles.timePickerText, { color: theme.semantic.text }]}>
+              {preferredTime || "Select preferred time"}
             </Text>
           </Pressable>
-
-          {showTimePicker && (
-            <View style={styles.timeSlotContainer}>
-              <ScrollView 
-                style={styles.timeSlotScroll} 
-                contentContainerStyle={styles.timeSlotContent}
-                showsVerticalScrollIndicator={false}
-              >
-                <Pressable
-                  style={[
-                    styles.timeSlot,
-                    {
-                      backgroundColor: !preferredTime ? tokens.colors.cardBackgroundYellow : tokens.colors.surface,
-                      borderColor: !preferredTime ? tokens.colors.textPrimary : tokens.colors.border,
-                    },
-                  ]}
-                  onPress={() => {
-                    setPreferredTime(null);
-                    setShowTimePicker(false);
-                  }}
-                >
-                  <Text style={[
-                    styles.timeSlotText,
-                    { 
-                      color: theme.semantic.text || tokens.colors.textPrimary,
-                      fontWeight: !preferredTime ? '600' : '400',
-                    },
-                  ]}>
-                    No preference
-                  </Text>
-                </Pressable>
-
-                {TIME_SLOTS.map((slot, index) => (
-                  <Pressable
-                    key={index}
-                    style={[
-                      styles.timeSlot,
-                      {
-                        backgroundColor: preferredTime === slot ? tokens.colors.cardBackgroundYellow : tokens.colors.surface,
-                        borderColor: preferredTime === slot ? tokens.colors.textPrimary : tokens.colors.border,
-                      },
-                    ]}
-                    onPress={() => {
-                      setPreferredTime(slot);
-                      setShowTimePicker(false);
-                    }}
-                  >
-                    <Text style={[
-                      styles.timeSlotText,
-                      { 
-                        color: theme.semantic.text || tokens.colors.textPrimary,
-                        fontWeight: preferredTime === slot ? '600' : '400',
-                      },
-                    ]}>
-                      {slot}
-                    </Text>
-                  </Pressable>
-                ))}
-              </ScrollView>
-            </View>
-          )}
         </View>
 
-        {/* Submit Button */}
+        {/* --- SUBMIT --- */}
         <Pressable
           style={({ pressed }) => [
             styles.submitButton,
-            { 
-              backgroundColor: tokens.colors.packageOrange,
-              opacity: pressed ? 0.9 : 1,
-            },
+            { backgroundColor: tokens.colors.packageOrange, opacity: pressed ? 0.9 : 1 },
           ]}
           onPress={handlePlaceOrder}
         >
           <Text style={styles.submitButtonText}>Place Order</Text>
         </Pressable>
       </ScrollView>
+
+      {/* -------------------- SLIDING BOTTOM SHEET -------------------- */}
+      <Modal transparent visible={showTimePicker} animationType="none">
+        <Pressable style={styles.modalBackdrop} onPress={closeSheet} />
+
+        <Animated.View
+          style={[
+            styles.sheetContainer,
+            {
+              transform: [
+                {
+                  translateY: slideAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [350, 0],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          {/* X BUTTON */}
+          <Pressable style={styles.closeButton} onPress={closeSheet}>
+            <X size={22} color={theme.semantic.text} />
+          </Pressable>
+
+          <Text style={styles.sheetTitle}>Select Preferred Time</Text>
+
+          <ScrollView
+            style={{ maxHeight: 320 }}
+            contentContainerStyle={{ padding: 10, gap: 10 }}
+            showsVerticalScrollIndicator={false}
+          >
+            {/* NO PREFERENCE */}
+            <Pressable
+              style={[
+                styles.timeOption,
+                {
+                  backgroundColor:
+                    preferredTime === null
+                      ? tokens.colors.cardBackgroundYellow
+                      : tokens.colors.surface,
+                },
+              ]}
+              onPress={() => {
+                setPreferredTime(null);
+                closeSheet();
+              }}
+            >
+              <Text style={styles.timeOptionText}>No preference</Text>
+            </Pressable>
+
+            {/* TIME SLOTS */}
+            {TIME_SLOTS.map((slot, index) => (
+              <Pressable
+                key={index}
+                style={[
+                  styles.timeOption,
+                  {
+                    backgroundColor:
+                      preferredTime === slot
+                        ? tokens.colors.cardBackgroundYellow
+                        : tokens.colors.surface,
+                  },
+                ]}
+                onPress={() => {
+                  setPreferredTime(slot);
+                  closeSheet();
+                }}
+              >
+                <Text style={styles.timeOptionText}>{slot}</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        </Animated.View>
+      </Modal>
     </SafeAreaView>
   );
 };
+
+/* ------------------------------- STYLES ------------------------------- */
 
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: tokens.spacing.lg,
     paddingVertical: tokens.spacing.md,
   },
   backButton: {
     padding: tokens.spacing.xs,
-    marginLeft: -tokens.spacing.xs,
   },
   headerTitle: {
     ...tokens.typography.h3,
     flex: 1,
-    textAlign: 'center',
+    textAlign: "center",
   },
-  headerSpacer: {
-    width: 40,
-  },
+
   scrollView: {
     flex: 1,
   },
@@ -384,6 +458,7 @@ const styles = StyleSheet.create({
     gap: tokens.spacing.lg,
     paddingBottom: tokens.spacing.xxxl,
   },
+
   section: {
     padding: tokens.spacing.lg,
     borderRadius: tokens.radii.card,
@@ -391,8 +466,8 @@ const styles = StyleSheet.create({
     ...tokens.shadows.sm,
   },
   sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: tokens.spacing.xs,
     marginBottom: tokens.spacing.xs,
   },
@@ -401,11 +476,12 @@ const styles = StyleSheet.create({
   },
   optionalBadge: {
     ...tokens.typography.caption,
-    marginLeft: tokens.spacing.xxs,
+    marginLeft: 4,
   },
+
   timePickerButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: tokens.spacing.sm,
     padding: tokens.spacing.md,
     borderRadius: tokens.radii.md,
@@ -415,38 +491,62 @@ const styles = StyleSheet.create({
     ...tokens.typography.body,
     flex: 1,
   },
-  timeSlotContainer: {
-    maxHeight: 200,
-    borderRadius: tokens.radii.md,
-    borderWidth: 1,
-    borderColor: tokens.colors.border,
-    overflow: 'hidden',
-  },
-  timeSlotScroll: {
-    flex: 1,
-  },
-  timeSlotContent: {
-    padding: tokens.spacing.xs,
-    gap: tokens.spacing.xs,
-  },
-  timeSlot: {
-    padding: tokens.spacing.sm,
-    borderRadius: tokens.radii.sm,
-    borderWidth: 1,
-  },
-  timeSlotText: {
-    ...tokens.typography.body,
-  },
+
   submitButton: {
     padding: tokens.spacing.lg,
     borderRadius: tokens.radii.md,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: tokens.spacing.md,
     ...tokens.shadows.md,
   },
   submitButtonText: {
     color: tokens.colors.surface,
     ...tokens.typography.h4,
-    fontWeight: '700',
+    fontWeight: "700",
+  },
+
+  /* ----- MODAL ----- */
+
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.35)",
+  },
+
+  sheetContainer: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: tokens.colors.surface,
+    padding: tokens.spacing.lg,
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    ...tokens.shadows.lg,
+  },
+
+  closeButton: {
+    position: "absolute",
+    right: 16,
+    top: 16,
+    padding: 6,
+    zIndex: 20,
+  },
+
+  sheetTitle: {
+    ...tokens.typography.h4,
+    textAlign: "center",
+    marginVertical: tokens.spacing.md,
+  },
+
+  timeOption: {
+    padding: tokens.spacing.md,
+    borderWidth: 1,
+    borderColor: tokens.colors.border,
+    borderRadius: tokens.radii.md,
+    alignItems: "center",
+  },
+
+  timeOptionText: {
+    ...tokens.typography.body,
   },
 });
