@@ -9,6 +9,7 @@ import { useTheme } from '@/theme/ThemeProvider';
 import { tokens } from '@/theme/tokens';
 import { ROUTES, TABS } from '@/constants/routes';
 import { RootStackParamList, BottomTabParamList } from './types';
+import { AnimatedTabs } from './AnimatedTabs';
 
 // Screens
 import { SplashScreen } from '@/screens/Splash';
@@ -131,7 +132,7 @@ export const RootNavigator = () => {
         <Stack.Screen name={ROUTES.ForgotPassword} component={ForgotPasswordScreen} options={PremiumFade} />
 
         {/* TABS */}
-        <Stack.Screen name={ROUTES.Main} component={BottomTabs} options={PremiumSlideRight} />
+        <Stack.Screen name={ROUTES.Main} component={AnimatedTabs} options={PremiumSlideRight} />
 
         {/* PUSH SCREENS */}
         <Stack.Screen name={ROUTES.Profile} component={ProfileScreen} options={PremiumSlideRight} />
