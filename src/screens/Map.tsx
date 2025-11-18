@@ -27,6 +27,7 @@ import {
   useShipmentsListQuery,
   useShipmentRouteQuery,
 } from '@/hooks/useShipmentsQuery';
+import { useRouteQuery } from '@/hooks/useRouteQuery';
 // import { useDriverLocationSimulator } from '@/hooks/useDriverLocationSimulator';
 import { useTheme } from '@/theme/ThemeProvider';
 import { tokens } from '@/theme/tokens';
@@ -124,11 +125,34 @@ export const MapScreen: React.FC = () => {
     FEATURE_FLAGS.mapsEnabled ? selectedId : undefined,
   );
 
+  // Fetch Google Directions route for selected shipment
+  const { data: googleRoute, isLoading: isLoadingRoute } = useRouteQuery(
+    selectedShipment?.origin,
+    selectedShipment?.destination
+  );
+
   const routeCoordinates = useMemo(() => {
     if (!selectedShipment) {
       return routeData?.coordinates || [];
     }
 
+    // Priority 1: Google Directions API route (most accurate, follows roads)
+    if (googleRoute?.routeCoordinates && googleRoute.routeCoordinates.length > 0) {
+      return googleRoute.routeCoordinates;
+    }
+
+    // Don't show fallback while Google route is still loading
+    // This prevents the flash of straight line before real route appears
+    if (isLoadingRoute) {
+      return [];
+    }
+
+    // Priority 2: Backend API route data (only if Google route failed/unavailable)
+    if (routeData?.coordinates && routeData.coordinates.length > 0) {
+      return routeData.coordinates;
+    }
+
+    // Priority 3: Fallback to straight line between points (only if both APIs failed)
     const coords: { lat: number; lng: number }[] = [];
 
     if (selectedShipment.origin) {
@@ -154,12 +178,8 @@ export const MapScreen: React.FC = () => {
       });
     }
 
-    if (routeData?.coordinates && routeData.coordinates.length > 0) {
-      return routeData.coordinates;
-    }
-
     return coords;
-  }, [selectedShipment, routeData]);
+  }, [selectedShipment, routeData, googleRoute, isLoadingRoute]);
 
   const latestCheckpoint = useMemo(() => {
     if (!selectedShipment || !selectedShipment.checkpoints.length) {

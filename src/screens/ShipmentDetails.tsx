@@ -6,6 +6,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ArrowLeft, MapPin } from 'lucide-react-native';
 
 import { useShipmentQuery, useShipmentRouteQuery } from '@/hooks/useShipmentsQuery';
+import { useRouteQuery } from '@/hooks/useRouteQuery';
 import { useTheme } from '@/theme/ThemeProvider';
 import { tokens } from '@/theme/tokens';
 import { Timeline } from '@/components/Timeline';
@@ -27,6 +28,12 @@ export const ShipmentDetailsScreen: React.FC = () => {
     FEATURE_FLAGS.mapsEnabled ? shipmentId : undefined,
   );
 
+  // Fetch Google Directions route for shipment
+  const { data: googleRoute, isLoading: isLoadingRoute } = useRouteQuery(
+    shipment?.origin,
+    shipment?.destination
+  );
+
   const latestCheckpoint = useMemo(() => {
     if (!shipment) {
       return undefined;
@@ -40,6 +47,23 @@ export const ShipmentDetailsScreen: React.FC = () => {
       return routeData?.coordinates || [];
     }
 
+    // Priority 1: Google Directions API route (most accurate, follows roads)
+    if (googleRoute?.routeCoordinates && googleRoute.routeCoordinates.length > 0) {
+      return googleRoute.routeCoordinates;
+    }
+
+    // Don't show fallback while Google route is still loading
+    // This prevents the flash of straight line before real route appears
+    if (isLoadingRoute) {
+      return [];
+    }
+
+    // Priority 2: Backend API route data (only if Google route failed/unavailable)
+    if (routeData?.coordinates && routeData.coordinates.length > 0) {
+      return routeData.coordinates;
+    }
+
+    // Priority 3: Fallback to straight line between points (only if both APIs failed)
     const coords = [];
 
     // Start with origin
@@ -60,13 +84,8 @@ export const ShipmentDetailsScreen: React.FC = () => {
       coords.push({ lat: shipment.destination.lat, lng: shipment.destination.lng });
     }
 
-    // If we have the full route data from API, use that instead (more detailed)
-    if (routeData?.coordinates && routeData.coordinates.length > 0) {
-      return routeData.coordinates;
-    }
-
     return coords;
-  }, [shipment, routeData]);
+  }, [shipment, routeData, googleRoute, isLoadingRoute]);
 
   // Enhanced markers: origin, destination, waypoints, and driver location
   const markers = useMemo(() => {

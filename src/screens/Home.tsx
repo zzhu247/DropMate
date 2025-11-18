@@ -10,12 +10,13 @@ import {
   View 
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Bell, ChevronDown, Plus, Package, Eye, EyeOff, Truck, Clock } from 'lucide-react-native';
+import { Bell, Package, Eye, EyeOff, Truck, Clock } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { Shipment } from '@/types';
 import { useShipmentsListQuery } from '@/hooks/useShipmentsQuery';
+import { useUserProfileQuery } from '@/hooks/useUserQuery';
 import { CourierCard } from '@/components/CourierCard';
 import { SearchBar } from '@/components/SearchBar';
 import { Skeleton } from '@/components/Skeleton';
@@ -34,6 +35,7 @@ export const HomeScreen: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [balanceVisible, setBalanceVisible] = useState(true);
 
+  const { data: userData } = useUserProfileQuery();
   const { data, isLoading, refetch, isRefetching } = useShipmentsListQuery({
     query: searchQuery,
   });
@@ -88,6 +90,12 @@ export const HomeScreen: React.FC = () => {
   };
 
   /* -------------------------------- HELPERS -------------------------------- */
+
+  const getDisplayName = () => {
+    if (!userData) return 'Guest';
+    // Use customer_name or driver_name based on role, fallback to email
+    return userData.customer_name || userData.driver_name || userData.email.split('@')[0];
+  };
 
   const getProgress = (shipment: Shipment) => {
     const statusProgress = {
@@ -153,11 +161,7 @@ export const HomeScreen: React.FC = () => {
               </Pressable>
 
               <View style={styles.profileInfo}>
-                <Text style={[styles.userName, { color: theme.semantic.text }]}>Sri Julaekha</Text>
-                <Pressable style={styles.locationContainer}>
-                  <Text style={[styles.userLocation, { color: theme.semantic.textMuted }]}>Jakarta, ID</Text>
-                  <ChevronDown color={theme.semantic.textMuted} size={14} />
-                </Pressable>
+                <Text style={[styles.userName, { color: theme.semantic.text }]}>{getDisplayName()}</Text>
               </View>
             </View>
 
@@ -316,9 +320,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', marginRight: tokens.spacing.sm,
   },
   profileInfo: { justifyContent: 'center', flex: 1 },
-  userName: { ...tokens.typography.h4, marginBottom: tokens.spacing.xxs },
-  locationContainer: { flexDirection: 'row', alignItems: 'center', gap: tokens.spacing.xxs },
-  userLocation: { ...tokens.typography.small },
+  userName: { ...tokens.typography.h4 },
 
   notificationButton: { position: 'relative', padding: tokens.spacing.xs },
   notificationBadge: {
