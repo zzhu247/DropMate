@@ -45,24 +45,21 @@ const ShipmentCardComponent: React.FC<ShipmentCardProps> = ({
     return statusProgress[shipment.status] || 0;
   }, [shipment.status]);
 
-  // Get origin and destination info
+  // Get origin and destination info from properly mapped fields
   const originInfo = useMemo(() => {
-    if (shipment.checkpoints.length === 0) return null;
-    const first = shipment.checkpoints[0];
+    const firstCheckpoint = shipment.checkpoints[0];
     return {
-      location: first.location || 'Origin',
-      date: formatAbsoluteTime(first.timeIso),
+      location: shipment.origin?.address || 'Origin',
+      date: firstCheckpoint ? formatAbsoluteTime(firstCheckpoint.timeIso) : 'N/A',
     };
-  }, [shipment.checkpoints]);
+  }, [shipment.origin, shipment.checkpoints]);
 
   const destinationInfo = useMemo(() => {
-    const last = latestUpdate;
-    if (!last) return null;
     return {
-      location: last.location || 'Destination',
-      date: formatAbsoluteTime(last.timeIso),
+      location: shipment.destination?.address || 'Destination',
+      date: latestUpdate ? formatAbsoluteTime(latestUpdate.timeIso) : 'N/A',
     };
-  }, [latestUpdate]);
+  }, [shipment.destination, latestUpdate]);
 
   // Detailed variant (for ShipmentDetails screen)
   if (variant === 'detailed') {
@@ -161,27 +158,23 @@ const ShipmentCardComponent: React.FC<ShipmentCardProps> = ({
                 {originInfo?.date || 'N/A'}
               </Text>
             </View>
-
-            <View style={styles.infoColumn}>
-              <Text style={[styles.infoLabel, { color: theme.semantic.textMuted || tokens.colors.textSecondary }]}>
-                Estimated
-              </Text>
-              <Text style={[styles.infoValue, { color: theme.semantic.text || tokens.colors.textPrimary }]}>
-                {destinationInfo?.date || 'N/A'}
-              </Text>
-            </View>
           </View>
 
-          {/* Additional info if provided in subtitle */}
-          {formatShipmentSubtitle(shipment) && (
+          {/* Sender and Receiver info from API */}
+          {(shipment.senderName || shipment.receiverName) && (
             <View style={styles.infoGrid}>
               <View style={styles.infoColumn}>
                 <Text style={[styles.infoLabel, { color: theme.semantic.textMuted || tokens.colors.textSecondary }]}>
                   Sender
                 </Text>
                 <Text style={[styles.infoValue, { color: theme.semantic.text || tokens.colors.textPrimary }]}>
-                  {formatShipmentSubtitle(shipment).split('→')[0]?.trim() || 'N/A'}
+                  {shipment.senderName || 'N/A'}
                 </Text>
+                {shipment.senderPhone && (
+                  <Text style={[styles.infoMeta, { color: theme.semantic.textMuted || tokens.colors.textSecondary }]}>
+                    {shipment.senderPhone}
+                  </Text>
+                )}
               </View>
 
               <View style={styles.infoColumn}>
@@ -189,8 +182,13 @@ const ShipmentCardComponent: React.FC<ShipmentCardProps> = ({
                   Receiver
                 </Text>
                 <Text style={[styles.infoValue, { color: theme.semantic.text || tokens.colors.textPrimary }]}>
-                  {formatShipmentSubtitle(shipment).split('→')[1]?.trim() || 'N/A'}
+                  {shipment.receiverName || 'N/A'}
                 </Text>
+                {shipment.receiverPhone && (
+                  <Text style={[styles.infoMeta, { color: theme.semantic.textMuted || tokens.colors.textSecondary }]}>
+                    {shipment.receiverPhone}
+                  </Text>
+                )}
               </View>
             </View>
           )}

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import MapView, { Marker, Polyline, Region, PROVIDER_GOOGLE } from 'react-native-maps';
-import { ActivityIndicator, StyleProp, StyleSheet, View, ViewStyle, Platform } from 'react-native';
+import { ActivityIndicator, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 
 import { LatLng, getRegionForCoordinates, toMapCoordinates } from '@/utils/map';
 
@@ -26,8 +26,8 @@ export type MapViewWrapperProps = {
 
 /**
  * MapView wrapper component with proper initialization
- * - iOS: Uses Apple Maps (default, no additional setup required)
- * - Android: Uses Google Maps (requires API key in app.json, not configured yet)
+ * - Uses Google Maps on both iOS and Android
+ * - Requires GOOGLE_MAPS_API_KEY in app.json
  */
 export const MapViewWrapper: React.FC<MapViewWrapperProps> = ({
   routeCoordinates,
@@ -122,7 +122,7 @@ export const MapViewWrapper: React.FC<MapViewWrapperProps> = ({
 
   return (
     <MapView
-      provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
+      provider={PROVIDER_GOOGLE}
       style={[styles.map, style]}
       initialRegion={computedRegion}
       onMapReady={handleMapReady}

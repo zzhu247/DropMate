@@ -42,6 +42,10 @@ export type Shipment = {
   destination?: LocationPoint;
   stops?: RouteStop[];
   driverLocation?: DriverLocation;
+  senderName?: string;
+  senderPhone?: string;
+  receiverName?: string;
+  receiverPhone?: string;
 };
 
 export type DeliveryItem = {

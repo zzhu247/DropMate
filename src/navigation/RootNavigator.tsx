@@ -1,9 +1,10 @@
 import React, { useMemo } from 'react';
-import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme, LinkingOptions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Platform, View, Text, StyleSheet } from 'react-native';
 import { Home, Search, Map as MapIcon, Settings as SettingsIcon } from 'lucide-react-native';
+import * as Linking from 'expo-linking';
 
 import { useTheme } from '@/theme/ThemeProvider';
 import { tokens } from '@/theme/tokens';
@@ -95,6 +96,40 @@ const BottomTabs = () => {
 };
 
 // ----------------------
+// DEEP LINKING CONFIG
+// ----------------------
+const linking: LinkingOptions<RootStackParamList> = {
+  prefixes: [Linking.createURL('/'), 'dropmate://'],
+  config: {
+    screens: {
+      [ROUTES.Splash]: 'splash',
+      [ROUTES.Tutorial]: 'tutorial',
+      [ROUTES.Login]: 'login',
+      [ROUTES.Signup]: 'signup',
+      [ROUTES.ForgotPassword]: 'forgot-password',
+      [ROUTES.Main]: {
+        path: 'main',
+        screens: {
+          [TABS.Home]: 'home',
+          [TABS.Track]: 'track',
+          [TABS.Map]: 'map',
+          [TABS.Settings]: 'settings',
+        },
+      },
+      [ROUTES.Profile]: 'profile',
+      [ROUTES.ShipmentDetails]: {
+        path: 'shipment/:id',
+        parse: {
+          id: (id: string) => Number(id),
+        },
+      },
+      [ROUTES.AddTracking]: 'add-tracking',
+      [ROUTES.PlaceOrder]: 'place-order',
+    },
+  },
+};
+
+// ----------------------
 // ROOT NAVIGATOR
 // ----------------------
 export const RootNavigator = () => {
@@ -115,7 +150,7 @@ export const RootNavigator = () => {
   }, [theme]);
 
   return (
-    <NavigationContainer theme={navigationTheme}>
+    <NavigationContainer theme={navigationTheme} linking={linking}>
       <Stack.Navigator
         initialRouteName={ROUTES.Splash}
         screenOptions={{

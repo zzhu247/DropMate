@@ -15,6 +15,8 @@ export type CourierCardProps = {
   destination: string;
   originDate: string;
   destinationDate: string;
+  senderName?: string;
+  receiverName?: string;
   progress: number; // 0-100
   etaIso?: string;
   location?: string;
@@ -30,6 +32,8 @@ export const CourierCard: React.FC<CourierCardProps> = ({
   destination,
   originDate,
   destinationDate,
+  senderName,
+  receiverName,
   progress,
   onPress,
   variant = 'white',
@@ -146,20 +150,30 @@ export const CourierCard: React.FC<CourierCardProps> = ({
         {/* Location Info - Horizontal Layout */}
         <View style={styles.locationRow}>
           <View style={styles.locationItem}>
+            <Text style={[styles.locationLabel, { color: theme.semantic.textMuted || tokens.colors.textSecondary }]}>
+              From
+            </Text>
             <Text style={[styles.locationName, { color: theme.semantic.text || tokens.colors.textPrimary }]}>
               {origin}
             </Text>
-            <Text style={[styles.locationDate, { color: theme.semantic.textMuted || tokens.colors.textSecondary }]}>
-              {originDate}
-            </Text>
+            {senderName && (
+              <Text style={[styles.locationDate, { color: theme.semantic.textMuted || tokens.colors.textSecondary }]}>
+                {senderName}
+              </Text>
+            )}
           </View>
           <View style={[styles.locationItem, styles.locationItemRight]}>
+            <Text style={[styles.locationLabel, { color: theme.semantic.textMuted || tokens.colors.textSecondary }]}>
+              To
+            </Text>
             <Text style={[styles.locationName, { color: theme.semantic.text || tokens.colors.textPrimary }]}>
               {destination}
             </Text>
-            <Text style={[styles.locationDate, { color: theme.semantic.textMuted || tokens.colors.textSecondary }]}>
-              {destinationDate}
-            </Text>
+            {receiverName && (
+              <Text style={[styles.locationDate, { color: theme.semantic.textMuted || tokens.colors.textSecondary }]}>
+                {receiverName}
+              </Text>
+            )}
           </View>
         </View>
       </View>
@@ -250,6 +264,13 @@ const styles = StyleSheet.create({
   },
   locationItemRight: {
     alignItems: 'flex-end',
+  },
+  locationLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    lineHeight: 14,
   },
   locationName: {
     fontSize: 14,

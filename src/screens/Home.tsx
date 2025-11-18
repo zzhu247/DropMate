@@ -25,6 +25,7 @@ import { tokens } from '@/theme/tokens';
 import { ROUTES, TABS } from '@/constants/routes';
 import { RootStackParamList } from '@/navigation/types';
 import { t } from '@/i18n/i18n';
+import { extractCity } from '@/utils/addressParser';
 
 export const HomeScreen: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -39,14 +40,15 @@ export const HomeScreen: React.FC = () => {
 
   const currentShipments = useMemo(() => {
     if (!data) return [];
+    // Show 3 most recent packages (excluding delivered)
     return data
-      .filter(s => s.status === 'IN_TRANSIT' || s.status === 'OUT_FOR_DELIVERY')
-      .slice(0, 5);
+      .filter(s => s.status !== 'DELIVERED')
+      .slice(0, 3);
   }, [data]);
 
   const totalActiveShipments = useMemo(() => {
     if (!data) return 0;
-    return data.filter(s => s.status === 'IN_TRANSIT' || s.status === 'OUT_FOR_DELIVERY').length;
+    return data.filter(s => s.status !== 'DELIVERED').length;
   }, [data]);
 
   /* -------------------------------- ANIMATIONS -------------------------------- */
@@ -99,12 +101,9 @@ export const HomeScreen: React.FC = () => {
   };
 
   const getShipmentLocations = (shipment: Shipment) => {
-    const checkpoints = shipment.checkpoints;
-    if (checkpoints.length === 0) return { origin: 'N/A', destination: 'N/A' };
-
     return {
-      origin: checkpoints[0].location || 'Origin',
-      destination: checkpoints[checkpoints.length - 1].location || 'Destination',
+      origin: shipment.origin ? extractCity(shipment.origin.address) : 'N/A',
+      destination: shipment.destination ? extractCity(shipment.destination.address) : 'N/A',
     };
   };
 
@@ -255,6 +254,8 @@ export const HomeScreen: React.FC = () => {
                         destination={loc.destination}
                         originDate={firstCP ? formatDate(firstCP.timeIso) : 'N/A'}
                         destinationDate={lastCP ? formatDate(lastCP.timeIso) : 'N/A'}
+                        senderName={shipment.senderName}
+                        receiverName={shipment.receiverName}
                         progress={getProgress(shipment)}
                         variant={variant}
                         onPress={() => navigation.navigate(ROUTES.ShipmentDetails, { shipmentId: shipment.id })}
@@ -263,13 +264,13 @@ export const HomeScreen: React.FC = () => {
                   );
                 })}
 
-                {totalActiveShipments > 5 && (
+                {totalActiveShipments > 3 && (
                   <Pressable
                     style={styles.viewMoreButton}
                     onPress={() => navigation.navigate(ROUTES.Main, { screen: TABS.Track })}
                   >
                     <Text style={[styles.viewMoreText, { color: theme.semantic.text }]}>
-                      View More ({totalActiveShipments - 5} more)
+                      View More ({totalActiveShipments - 3} more)
                     </Text>
                   </Pressable>
                 )}

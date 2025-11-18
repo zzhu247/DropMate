@@ -24,9 +24,11 @@ import {
 } from "lucide-react-native";
 
 import { FormTextInput } from "@/components/FormTextInput";
+import { AddressAutocomplete, AddressDetails } from "@/components/AddressAutocomplete";
 import { useTheme } from "@/theme/ThemeProvider";
 import { tokens } from "@/theme/tokens";
 import { RootStackParamList } from "@/navigation/types";
+import { userService } from "@/api/userService";
 
 /* ----------------------------- TIME SLOTS ----------------------------- */
 
@@ -60,11 +62,11 @@ export const PlaceOrderScreen: React.FC = () => {
   // FORM
   const [senderName, setSenderName] = useState("");
   const [senderPhone, setSenderPhone] = useState("+1");
-  const [senderAddress, setSenderAddress] = useState("");
+  const [senderAddress, setSenderAddress] = useState<AddressDetails | null>(null);
 
   const [receiverName, setReceiverName] = useState("");
   const [receiverPhone, setReceiverPhone] = useState("+1");
-  const [receiverAddress, setReceiverAddress] = useState("");
+  const [receiverAddress, setReceiverAddress] = useState<AddressDetails | null>(null);
 
   const [packageWeight, setPackageWeight] = useState("");
   const [packageDescription, setPackageDescription] = useState("");
@@ -72,6 +74,9 @@ export const PlaceOrderScreen: React.FC = () => {
   // TIME PICKER
   const [preferredTime, setPreferredTime] = useState<string | null>(null);
   const [showTimePicker, setShowTimePicker] = useState(false);
+
+  // LOADING STATE
+  const [loading, setLoading] = useState(false);
 
   // ANIMATION
   const slideAnim = useState(new Animated.Value(0))[0];
@@ -104,12 +109,12 @@ export const PlaceOrderScreen: React.FC = () => {
 
     if (!senderName.trim()) newErrors.senderName = "Sender name is required";
     if (senderPhone === "+1") newErrors.senderPhone = "Sender phone is required";
-    if (!senderAddress.trim()) newErrors.senderAddress = "Sender address is required";
+    if (!senderAddress) newErrors.senderAddress = "Sender address is required";
 
     if (!receiverName.trim()) newErrors.receiverName = "Receiver name is required";
     if (receiverPhone === "+1")
       newErrors.receiverPhone = "Receiver phone is required";
-    if (!receiverAddress.trim())
+    if (!receiverAddress)
       newErrors.receiverAddress = "Receiver address is required";
 
     if (!packageWeight.trim()) newErrors.packageWeight = "Weight is required";
@@ -120,35 +125,61 @@ export const PlaceOrderScreen: React.FC = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handlePlaceOrder = () => {
+  const handlePlaceOrder = async () => {
     if (!validateForm()) {
       Alert.alert("Error", "Please fill in all required fields");
       return;
     }
 
-    const orderData = {
-      sender: {
-        name: senderName,
-        phone: senderPhone,
-        address: senderAddress,
-      },
-      receiver: {
-        name: receiverName,
-        phone: receiverPhone,
-        address: receiverAddress,
-      },
-      package: {
-        weight: packageWeight,
-        description: packageDescription,
-      },
-      preferredTime: preferredTime,
-    };
+    try {
+      setLoading(true);
 
-    console.log("Order Data:", orderData);
+      // Prepare shipment data in backend format
+      const shipmentData = {
+        sender: {
+          name: senderName,
+          phone: senderPhone,
+          address: senderAddress?.address || '',
+          latitude: senderAddress?.latitude,
+          longitude: senderAddress?.longitude,
+        },
+        receiver: {
+          name: receiverName,
+          phone: receiverPhone,
+          address: receiverAddress?.address || '',
+          latitude: receiverAddress?.latitude,
+          longitude: receiverAddress?.longitude,
+        },
+        package: {
+          weight: parseFloat(packageWeight) || 0,
+          description: packageDescription,
+          details: preferredTime ? { preferredTime } : undefined,
+        },
+        totalAmount: 0, // Will be calculated on backend
+      };
 
-    Alert.alert("Success", "Your order has been placed.", [
-      { text: "OK", onPress: () => navigation.goBack() },
-    ]);
+      console.log("Creating shipment:", shipmentData);
+
+      // Call backend API to create shipment
+      const response = await userService.createShipment(shipmentData);
+
+      console.log("Shipment created successfully:", response);
+
+      Alert.alert("Success", "Your order has been placed.", [
+        { text: "OK", onPress: () => navigation.goBack() },
+      ]);
+    } catch (error: any) {
+      console.error("Failed to create order:", error);
+
+      // Show user-friendly error message
+      const errorMessage = error?.response?.data?.error ||
+                          error?.message ||
+                          "Failed to place order. Please try again.";
+
+      Alert.alert("Error", errorMessage);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -181,6 +212,7 @@ export const PlaceOrderScreen: React.FC = () => {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         {/* --- SENDER --- */}
         <View
@@ -215,13 +247,11 @@ export const PlaceOrderScreen: React.FC = () => {
             leftAccessory={<Phone size={18} color={theme.semantic.textMuted} />}
           />
 
-          <FormTextInput
+          <AddressAutocomplete
             label="Address"
-            placeholder="123 Main St, Toronto"
-            value={senderAddress}
-            onChangeText={setSenderAddress}
-            multiline
-            numberOfLines={2}
+            placeholder="Search address"
+            value={senderAddress?.address}
+            onAddressSelect={setSenderAddress}
             errorMessage={errors.senderAddress}
           />
         </View>
@@ -259,13 +289,11 @@ export const PlaceOrderScreen: React.FC = () => {
             leftAccessory={<Phone size={18} color={theme.semantic.textMuted} />}
           />
 
-          <FormTextInput
+          <AddressAutocomplete
             label="Address"
-            placeholder="456 Oak Ave, Vancouver"
-            value={receiverAddress}
-            onChangeText={setReceiverAddress}
-            multiline
-            numberOfLines={2}
+            placeholder="Search address"
+            value={receiverAddress?.address}
+            onAddressSelect={setReceiverAddress}
             errorMessage={errors.receiverAddress}
           />
         </View>
@@ -342,11 +370,17 @@ export const PlaceOrderScreen: React.FC = () => {
         <Pressable
           style={({ pressed }) => [
             styles.submitButton,
-            { backgroundColor: tokens.colors.packageOrange, opacity: pressed ? 0.9 : 1 },
+            {
+              backgroundColor: tokens.colors.packageOrange,
+              opacity: loading ? 0.6 : pressed ? 0.9 : 1,
+            },
           ]}
           onPress={handlePlaceOrder}
+          disabled={loading}
         >
-          <Text style={styles.submitButtonText}>Place Order</Text>
+          <Text style={styles.submitButtonText}>
+            {loading ? "Placing Order..." : "Place Order"}
+          </Text>
         </Pressable>
       </ScrollView>
 

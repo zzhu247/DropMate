@@ -9,6 +9,7 @@ import { X, ChevronDown } from 'lucide-react-native';
 
 import { RootStackParamList } from '@/navigation/types';
 import { FormTextInput } from '@/components/FormTextInput';
+import { AddressAutocomplete, AddressDetails } from '@/components/AddressAutocomplete';
 import { useTheme } from '@/theme/ThemeProvider';
 import { useAddTracking } from '@/hooks/useAddTracking';
 import { t } from '@/i18n/i18n';
@@ -52,8 +53,8 @@ export const AddTrackingSheetScreen: React.FC<AddTrackingProps> = ({ navigation 
   const theme = useTheme();
   const mutation = useAddTracking();
   const [carrierPickerVisible, setCarrierPickerVisible] = useState(false);
-  const [originAddress, setOriginAddress] = useState('');
-  const [destinationAddress, setDestinationAddress] = useState('');
+  const [originAddress, setOriginAddress] = useState<AddressDetails | null>(null);
+  const [destinationAddress, setDestinationAddress] = useState<AddressDetails | null>(null);
   const [originError, setOriginError] = useState<string | undefined>();
   const [destinationError, setDestinationError] = useState<string | undefined>();
 
@@ -77,14 +78,14 @@ export const AddTrackingSheetScreen: React.FC<AddTrackingProps> = ({ navigation 
   const onSubmit = handleSubmit(async (values) => {
     // Validate locations
     let hasError = false;
-    if (!originAddress || originAddress.trim().length < 5) {
-      setOriginError('Starting location is required (min 5 characters)');
+    if (!originAddress) {
+      setOriginError('Starting location is required');
       hasError = true;
     } else {
       setOriginError(undefined);
     }
-    if (!destinationAddress || destinationAddress.trim().length < 5) {
-      setDestinationError('Destination location is required (min 5 characters)');
+    if (!destinationAddress) {
+      setDestinationError('Destination location is required');
       hasError = true;
     } else {
       setDestinationError(undefined);
@@ -94,18 +95,17 @@ export const AddTrackingSheetScreen: React.FC<AddTrackingProps> = ({ navigation 
     // Generate tracking ID if carrier is 'Other'
     const trackingNo = values.carrier === 'Other' ? generateCustomTrackingId() : values.trackingNo!;
 
-    // Create location points with placeholder coordinates (0,0)
-    // In production, you would geocode these addresses to get real lat/lng
+    // Create location points with real coordinates from Google Places
     const origin: LocationPoint = {
-      lat: 0,
-      lng: 0,
-      address: originAddress.trim(),
+      lat: originAddress.latitude,
+      lng: originAddress.longitude,
+      address: originAddress.address,
     };
 
     const destination: LocationPoint = {
-      lat: 0,
-      lng: 0,
-      address: destinationAddress.trim(),
+      lat: destinationAddress.latitude,
+      lng: destinationAddress.longitude,
+      address: destinationAddress.address,
     };
 
     await mutation.mutateAsync({
@@ -215,54 +215,28 @@ export const AddTrackingSheetScreen: React.FC<AddTrackingProps> = ({ navigation 
           )}
 
           {/* Starting Location */}
-          <View style={styles.fieldGroup}>
-            <Text style={[styles.label, { color: theme.semantic.text }]}>Starting Location *</Text>
-            <TextInput
-              value={originAddress}
-              onChangeText={(text) => {
-                setOriginAddress(text);
-                if (text.trim().length >= 5) {
-                  setOriginError(undefined);
-                }
-              }}
-              placeholder="Enter pickup address"
-              placeholderTextColor={theme.semantic.textMuted}
-              style={[
-                styles.input,
-                {
-                  color: theme.semantic.text,
-                  backgroundColor: theme.semantic.surface,
-                  borderColor: originError ? theme.colors.error : theme.semantic.border,
-                },
-              ]}
-            />
-            {originError && <Text style={[styles.error, { color: theme.colors.error }]}>{originError}</Text>}
-          </View>
+          <AddressAutocomplete
+            label="Starting Location *"
+            placeholder="Search pickup address"
+            value={originAddress?.address}
+            onAddressSelect={(details) => {
+              setOriginAddress(details);
+              setOriginError(undefined);
+            }}
+            errorMessage={originError}
+          />
 
           {/* Destination Location */}
-          <View style={styles.fieldGroup}>
-            <Text style={[styles.label, { color: theme.semantic.text }]}>Destination Location *</Text>
-            <TextInput
-              value={destinationAddress}
-              onChangeText={(text) => {
-                setDestinationAddress(text);
-                if (text.trim().length >= 5) {
-                  setDestinationError(undefined);
-                }
-              }}
-              placeholder="Enter delivery address"
-              placeholderTextColor={theme.semantic.textMuted}
-              style={[
-                styles.input,
-                {
-                  color: theme.semantic.text,
-                  backgroundColor: theme.semantic.surface,
-                  borderColor: destinationError ? theme.colors.error : theme.semantic.border,
-                },
-              ]}
-            />
-            {destinationError && <Text style={[styles.error, { color: theme.colors.error }]}>{destinationError}</Text>}
-          </View>
+          <AddressAutocomplete
+            label="Destination Location *"
+            placeholder="Search delivery address"
+            value={destinationAddress?.address}
+            onAddressSelect={(details) => {
+              setDestinationAddress(details);
+              setDestinationError(undefined);
+            }}
+            errorMessage={destinationError}
+          />
 
           {/* Item Description */}
           <Controller

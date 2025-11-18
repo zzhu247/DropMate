@@ -25,6 +25,7 @@ import { Shipment } from '@/types';
 import { ROUTES } from '@/constants/routes';
 import { RootStackParamList } from '@/navigation/types';
 import { t } from '@/i18n/i18n';
+import { extractCity } from '@/utils/addressParser';
 
 /* ----------------------------- FILTERS ----------------------------- */
 
@@ -102,15 +103,9 @@ export const TrackScreen: React.FC = () => {
   };
 
   const getShipmentLocations = (shipment: Shipment) => {
-    const checkpoints = shipment.checkpoints;
-    if (checkpoints.length === 0) return { origin: 'N/A', destination: 'N/A' };
-    
-    const first = checkpoints[0];
-    const last = checkpoints[checkpoints.length - 1];
-    
     return {
-      origin: first.location || 'Origin',
-      destination: last.location || 'Destination',
+      origin: shipment.origin ? extractCity(shipment.origin.address) : 'N/A',
+      destination: shipment.destination ? extractCity(shipment.destination.address) : 'N/A',
     };
   };
 
@@ -164,6 +159,8 @@ export const TrackScreen: React.FC = () => {
             destination={locations.destination}
             originDate={firstCheckpoint ? formatDate(firstCheckpoint.timeIso) : 'N/A'}
             destinationDate={lastCheckpoint ? formatDate(lastCheckpoint.timeIso) : 'N/A'}
+            senderName={item.senderName}
+            receiverName={item.receiverName}
             progress={getProgress(item)}
             variant={variant}
             onPress={() =>

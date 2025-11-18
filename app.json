@@ -24,7 +24,10 @@
         "NSLocationWhenInUseUsageDescription": "This app needs access to your location to show delivery routes",
         "NSLocationAlwaysUsageDescription": "This app needs access to your location to track deliveries"
       },
-      "bundleIdentifier": "com.kevinlin29.dropmate"
+      "bundleIdentifier": "com.kevinlin29.dropmate",
+      "config": {
+        "googleMapsApiKey": "${GOOGLE_MAPS_API_KEY}"
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -33,7 +36,10 @@
       },
       "permissions": [
         "ACCESS_COARSE_LOCATION",
-        "ACCESS_FINE_LOCATION"
+        "ACCESS_FINE_LOCATION",
+        "POST_NOTIFICATIONS",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
       ],
       "config": {
         "googleMaps": {
@@ -43,11 +49,11 @@
       "package": "com.kevinlin29.dropmate"
     },
     "extra": {
-      "eas": {
-        "projectId": "00000000-0000-0000-0000-000000000000"
-      },
       "firebaseApiKey": "${FIREBASE_API_KEY}",
-      "googleMapsApiKey": "${GOOGLE_MAPS_API_KEY}"
+      "googleMapsApiKey": "${GOOGLE_MAPS_API_KEY}",
+      "eas": {
+        "projectId": "0ec2f323-d1c4-42c4-80f4-7d93c641c2bb"
+      }
     },
     "plugins": [
       "expo-secure-store",
@@ -56,7 +62,18 @@
         {
           "locationAlwaysAndWhenInUsePermission": "Allow DropMate to use your location to track deliveries."
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/logo.png",
+          "color": "#4A90E2",
+          "sounds": [
+            "./assets/sounds/notification.wav"
+          ]
+        }
       ]
-    ]
+    ],
+    "owner": "kevinlin29"
   }
 }

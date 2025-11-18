@@ -1,84 +1,186 @@
-import { apiClient } from './client';
-import {
+import { userService } from './userService';
+import { locationService } from './locationClient';
+import { backendShipmentToUI, backendShipmentsToUI } from './adapters';
+import type {
   CreateShipmentInput,
   IShipmentsService,
   ListShipmentsOptions,
   ShipmentRoute,
 } from './IShipmentsService';
-import shipmentsSeed from './seed/shipments.json';
-import routesSeed from './seed/routes.json';
-import { Shipment } from '@/types';
-import { sleep } from '@/utils/sleep';
+import type { Shipment } from '@/types/shipment';
 
-const seededShipments = shipmentsSeed as Shipment[];
-const seededRoutes = routesSeed as Record<string, ShipmentRoute>;
-
-const latency = () => 250 + Math.random() * 350;
-
+/**
+ * HTTP Shipments Service
+ * Uses real backend API instead of local storage or seed data
+ */
 export class HttpShipmentsService implements IShipmentsService {
-  async list(_options?: ListShipmentsOptions): Promise<Shipment[]> {
-    await sleep(latency());
+  /**
+   * List user's shipments from backend
+   * GET /api/users/me/shipments
+   */
+  async list(options?: ListShipmentsOptions): Promise<Shipment[]> {
+    try {
+      // Fetch all shipments from backend
+      // Note: Backend filtering will be added in the future
+      const backendShipments = await userService.getShipments();
 
-    // TODO: Replace stub with GET /shipments call once backend is ready.
-    // const response = await apiClient.get<Shipment[]>('/shipments', { params: options });
-    // return response.data;
-    return [...seededShipments];
+      // Convert to UI format
+      let uiShipments = backendShipmentsToUI(backendShipments);
+
+      // Apply client-side status filter
+      if (options?.status) {
+        uiShipments = uiShipments.filter((shipment) => shipment.status === options.status);
+      }
+
+      // Apply client-side search filter
+      if (options?.query) {
+        const query = options.query.toLowerCase().trim();
+        uiShipments = uiShipments.filter((shipment) =>
+          [shipment.trackingNo, shipment.nickname ?? '', shipment.itemDescription ?? '']
+            .join(' ')
+            .toLowerCase()
+            .includes(query)
+        );
+      }
+
+      // Sort by last updated (most recent first)
+      uiShipments.sort((a, b) =>
+        new Date(b.lastUpdatedIso).getTime() - new Date(a.lastUpdatedIso).getTime()
+      );
+
+      return uiShipments;
+    } catch (error) {
+      console.error('[HttpShipmentsService] Failed to list shipments:', error);
+      throw error;
+    }
   }
 
+  /**
+   * Get a single shipment by ID
+   * GET /api/users/me/shipments/:id
+   */
   async get(id: string): Promise<Shipment | undefined> {
-    await sleep(latency());
+    try {
+      const shipmentId = parseInt(id, 10);
+      if (isNaN(shipmentId)) {
+        console.error('[HttpShipmentsService] Invalid shipment ID:', id);
+        return undefined;
+      }
 
-    // TODO: Replace stub with GET /shipments/{id} call.
-    // const response = await apiClient.get<Shipment>(`/shipments/${id}`);
-    // return response.data;
-    return seededShipments.find((shipment) => shipment.id === id);
+      const backendShipment = await userService.getShipment(shipmentId);
+      return backendShipmentToUI(backendShipment);
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        return undefined;
+      }
+      console.error('[HttpShipmentsService] Failed to get shipment:', error);
+      throw error;
+    }
   }
 
+  /**
+   * Create a new shipment
+   * POST /api/users/me/shipments
+   *
+   * Maps UI CreateShipmentInput to backend CreateShipmentEnhanced format
+   */
   async create(input: CreateShipmentInput): Promise<Shipment> {
-    await sleep(latency());
-
-    // TODO: Replace stub with POST /shipments.
-    // When backend is ready, the API should accept the full input including origin, destination, and itemDescription
-    // const response = await apiClient.post<Shipment>('/shipments', input);
-    // return response.data;
-    const now = new Date().toISOString();
-    return {
-      id: `pending-${Date.now()}`,
-      trackingNo: input.trackingNo,
-      carrier: input.carrier,
-      nickname: input.nickname,
-      itemDescription: input.itemDescription,
-      status: 'CREATED',
-      checkpoints: [
-        {
-          code: 'CREATED',
-          label: 'Label created',
-          timeIso: now,
-          location: input.origin?.address,
+    try {
+      // Map UI input to backend format
+      const backendInput = {
+        sender: {
+          name: 'Customer', // Will be filled from user profile on backend
+          phone: '', // Will be filled from user profile
+          address: input.origin?.address || 'Pickup location',
+          latitude: input.origin?.lat,
+          longitude: input.origin?.lng,
         },
-      ],
-      lastUpdatedIso: now,
-      origin: input.origin,
-      destination: input.destination,
-    };
+        receiver: {
+          name: input.nickname || 'Recipient',
+          phone: '',
+          address: input.destination?.address || 'Delivery location',
+          latitude: input.destination?.lat,
+          longitude: input.destination?.lng,
+        },
+        package: {
+          description: input.itemDescription,
+        },
+        totalAmount: 0, // Will be calculated on backend or set by pricing logic
+      };
+
+      const result = await userService.createShipment(backendInput);
+
+      // Convert response to UI format
+      return backendShipmentToUI(result.shipment);
+    } catch (error) {
+      console.error('[HttpShipmentsService] Failed to create shipment:', error);
+      throw error;
+    }
   }
 
+  /**
+   * Delete/cancel a shipment
+   * DELETE /api/users/me/shipments/:id
+   */
   async delete(id: string): Promise<void> {
-    await sleep(latency());
+    try {
+      const shipmentId = parseInt(id, 10);
+      if (isNaN(shipmentId)) {
+        throw new Error(`Invalid shipment ID: ${id}`);
+      }
 
-    // TODO: Replace stub with DELETE /shipments/{id}.
-    // await apiClient.delete(`/shipments/${id}`);
-
-    void id; // no-op placeholder until backend is connected.
+      await userService.deleteShipment(shipmentId);
+    } catch (error) {
+      console.error('[HttpShipmentsService] Failed to delete shipment:', error);
+      throw error;
+    }
   }
 
+  /**
+   * Get shipment route (coordinates for map)
+   * This combines pickup, delivery, and current driver location
+   */
   async getRoute(id: string): Promise<ShipmentRoute> {
-    await sleep(latency());
+    try {
+      const shipmentId = parseInt(id, 10);
+      if (isNaN(shipmentId)) {
+        return { coordinates: [] };
+      }
 
-    // TODO: Replace stub with GET /shipments/{id}/location.
-    // const response = await apiClient.get<ShipmentRoute>(`/shipments/${id}/location`);
-    // return response.data;
-    return seededRoutes[id] ?? { coordinates: [] };
+      // Get shipment with current location
+      const backendShipment = await userService.getShipment(shipmentId);
+
+      const coordinates: Array<{ lat: number; lng: number }> = [];
+
+      // Add pickup location
+      if (backendShipment.pickup_latitude && backendShipment.pickup_longitude) {
+        coordinates.push({
+          lat: backendShipment.pickup_latitude,
+          lng: backendShipment.pickup_longitude,
+        });
+      }
+
+      // Add current driver location (if in transit)
+      if (backendShipment.current_location) {
+        coordinates.push({
+          lat: backendShipment.current_location.latitude,
+          lng: backendShipment.current_location.longitude,
+        });
+      }
+
+      // Add delivery location
+      if (backendShipment.delivery_latitude && backendShipment.delivery_longitude) {
+        coordinates.push({
+          lat: backendShipment.delivery_latitude,
+          lng: backendShipment.delivery_longitude,
+        });
+      }
+
+      return { coordinates };
+    } catch (error) {
+      console.error('[HttpShipmentsService] Failed to get route:', error);
+      return { coordinates: [] };
+    }
   }
 }
 
